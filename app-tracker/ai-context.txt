@@ -1,0 +1,8 @@
+I am building a Windows productivity app to monitor app usage using Electron, React, Node.js, and TypeScript. 
+My UI uses Tailwind CSS, a dark glassmorphism theme, and the Acorn font.
+Project structure relies on electron-vite with TypeScript enabled.
+
+Rule 1: Never use Node.js modules (like child_process or fs) directly inside React components (.tsx files).
+Rule 2: All system-level Node.js code goes in `src/main/index.ts`. 
+Rule 3: React communicates with the backend via Inter-Process Communication (IPC) using `src/preload/index.ts`.
+Rule 4: Give me code exactly file-by-file, ensuring strict TypeScript types.
