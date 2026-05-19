@@ -1,10 +1,83 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
+import fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
-function createWindow(): void {
-  // Create the browser window.
+let trackingInterval: NodeJS.Timeout | null = null;
+let lastApp: string | null = null;
+let lastTime: number = Date.now();
+
+// 1. Setup the secure save location on Windows
+const dataPath = join(app.getPath('userData'), 'usage-data.json');
+let appUsage: Record<string, number> = {};
+
+// 2. Load existing data if the user has used the app before
+if (fs.existsSync(dataPath)) {
+  try {
+    appUsage = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+  } catch (e) {
+    console.error("Failed to read usage data", e);
+  }
+}
+
+async function startTracking(mainWindow: BrowserWindow) {
+  try {
+    const activeWin = (await import('active-win')).default;
+    console.log("Started tracking Windows applications...");
+    
+    trackingInterval = setInterval(async () => {
+      try {
+        const windowInfo = await activeWin();
+        if (windowInfo && mainWindow) {
+          const currentApp = windowInfo.owner.name;
+          const now = Date.now();
+
+          // 3. If the user switched to a new app, calculate time spent on the last one
+          if (lastApp && lastApp !== currentApp) {
+            const timeSpent = Math.floor((now - lastTime) / 1000); // Convert milliseconds to seconds
+            appUsage[lastApp] = (appUsage[lastApp] || 0) + timeSpent;
+            
+            // Save to hard drive
+            fs.writeFileSync(dataPath, JSON.stringify(appUsage));
+          }
+
+          // 4. Update our trackers
+          if (lastApp !== currentApp) {
+            lastApp = currentApp;
+            lastTime = now;
+          }
+
+          // 5. Calculate total time (saved history + current active session)
+          const currentSessionTime = Math.floor((now - lastTime) / 1000);
+          const totalFocusSeconds = (appUsage[currentApp] || 0) + currentSessionTime;
+
+          // 6. Send across the bridge!
+          mainWindow.webContents.send('window-update', {
+            name: currentApp,
+            title: windowInfo.title,
+            focusTime: totalFocusSeconds
+          });
+        }
+      } catch (err) {
+        console.error("Error reading active window:", err);
+      }
+    }, 2000);
+  } catch (error) {
+    console.error("Failed to import active-win:", error);
+  }
+}
+
+// 7. Save the very last chunk of time when the user closes the app
+app.on('before-quit', () => {
+  if (lastApp) {
+    const timeSpent = Math.floor((Date.now() - lastTime) / 1000);
+    appUsage[lastApp] = (appUsage[lastApp] || 0) + timeSpent;
+    fs.writeFileSync(dataPath, JSON.stringify(appUsage));
+  }
+});
+
+function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
@@ -26,49 +99,31 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  // HMR for renderer base on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow;
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
-
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
-
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
-  createWindow()
+  
+  const mainWindow = createWindow()
+  startTracking(mainWindow) 
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and require them here.

@@ -5,7 +5,13 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        // This explicitly tells Vite to leave active-win alone!
+        external: ['active-win'] 
+      }
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]
