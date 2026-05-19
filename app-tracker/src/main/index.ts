@@ -8,11 +8,9 @@ let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
 let lastTime: number = Date.now();
 
-// 1. Setup the secure save location on Windows
 const dataPath = join(app.getPath('userData'), 'usage-data.json');
 let appUsage: Record<string, number> = {};
 
-// 2. Load existing data if the user has used the app before
 if (fs.existsSync(dataPath)) {
   try {
     appUsage = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
@@ -24,7 +22,6 @@ if (fs.existsSync(dataPath)) {
 async function startTracking(mainWindow: BrowserWindow) {
   try {
     const activeWin = (await import('active-win')).default;
-    console.log("Started tracking Windows applications...");
     
     trackingInterval = setInterval(async () => {
       try {
@@ -33,30 +30,31 @@ async function startTracking(mainWindow: BrowserWindow) {
           const currentApp = windowInfo.owner.name;
           const now = Date.now();
 
-          // 3. If the user switched to a new app, calculate time spent on the last one
           if (lastApp && lastApp !== currentApp) {
-            const timeSpent = Math.floor((now - lastTime) / 1000); // Convert milliseconds to seconds
+            const timeSpent = Math.floor((now - lastTime) / 1000);
             appUsage[lastApp] = (appUsage[lastApp] || 0) + timeSpent;
             
-            // Save to hard drive
-            fs.writeFileSync(dataPath, JSON.stringify(appUsage));
+            // APPLIED THE CODE ASSIST FIX: Asynchronous saving!
+            await fs.promises.writeFile(dataPath, JSON.stringify(appUsage));
           }
 
-          // 4. Update our trackers
           if (lastApp !== currentApp) {
             lastApp = currentApp;
             lastTime = now;
           }
 
-          // 5. Calculate total time (saved history + current active session)
           const currentSessionTime = Math.floor((now - lastTime) / 1000);
           const totalFocusSeconds = (appUsage[currentApp] || 0) + currentSessionTime;
+          
+          // Create a real-time clone of the database to send to the chart
+          const liveUsageData = { ...appUsage };
+          liveUsageData[currentApp] = totalFocusSeconds;
 
-          // 6. Send across the bridge!
           mainWindow.webContents.send('window-update', {
             name: currentApp,
             title: windowInfo.title,
-            focusTime: totalFocusSeconds
+            focusTime: totalFocusSeconds,
+            allUsage: liveUsageData // Sending all data to React!
           });
         }
       } catch (err) {
@@ -68,7 +66,6 @@ async function startTracking(mainWindow: BrowserWindow) {
   }
 }
 
-// 7. Save the very last chunk of time when the user closes the app
 app.on('before-quit', () => {
   if (lastApp) {
     const timeSpent = Math.floor((Date.now() - lastTime) / 1000);
@@ -79,8 +76,8 @@ app.on('before-quit', () => {
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1000, // Widened the window slightly to fit the chart nicely
+    height: 750,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
