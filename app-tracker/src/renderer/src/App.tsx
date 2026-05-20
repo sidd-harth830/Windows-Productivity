@@ -26,34 +26,33 @@ export const GenericAppIcon = () => (
   </svg>
 );
 
-// NEW: Theme-integrated Zeitra Custom Logo
+// NEW: Updated theme-integrated Zeitra Custom Logo
 export const ZeitraLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 130 161" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="SVGID_1_" x1="20.01" x2="102.2" y1="10.06" y2="7.304" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a2))" offset="1" />
+        <stop stopColor="rgb(var(--a1))" stopOpacity="0.7" offset="1" />
       </linearGradient>
       <linearGradient id="SVGID_2_" x1="71.06" x2="110.2" y1="22.79" y2="21.63" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a2))" offset="1" />
+        <stop stopColor="rgb(var(--a2))" stopOpacity="0.8" offset="1" />
       </linearGradient>
       <linearGradient id="SVGID_3_" x1="19.11" x2="57.99" y1="74.68" y2="74.68" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a2))" offset="1" />
+        <stop stopColor="rgb(var(--a2))" stopOpacity="0.8" offset="1" />
       </linearGradient>
       <linearGradient id="SVGID_4_" x1="24.58" x2="109.9" y1="90.6" y2="90.6" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a2))" offset="1" />
+        <stop stopColor="rgb(var(--a2))" stopOpacity="0.7" offset="1" />
       </linearGradient>
     </defs>
     <path fill="url(#SVGID_1_)" d="m105.3 2.5h-84.3c-1.5 2.7-1.3 6.8-0.4 10.1h72.4l0.1-0.1h1l7.1-8.1 1.2-1.4 2.9-0.5z" />
-    <path fill="rgb(var(--a2))" d="m113.3 27.7c-1.8-1.9-5.7-2.5-8.5 0l-20.9 23.3c-2.7 3.1-7.3 3.8-9.7 0.4-1.5-1.8-7.7-8.9-11.3-13-2.8-3-6.4-5.8-12.5-5.8-5.5 0-9.4 2-12.8 5.3l-21.5 24.5c-1.7 1.7-1.4 5.4 1.1 7.2 1.9 1.5 5.6 1.5 7-0.5l21.1-24.3c1.8-2.4 7.3-3.4 9.5-0.6 2.1 2.1 9.3 10.9 11.5 13.9 3.1 3.6 7.3 6.9 12.9 6.9 6.4 0 10.1-1.7 13.2-4.9l20.9-25.5c2-2 1.7-5.2 0-6.9z" />
+    <path fill="rgb(var(--a2))" d="m113.3 27.7c-1.8-1.9-5.7-2.5-8.5 0l-20.9 23.3c-2.7 3.1-7.3 3.8-9.7 0.4-1.5-1.8-7.7-8.9-11.3-13-2.8-3-6.4-5.8-12.5-5.8-5.5 0-9.4 2-12.8 5.3l-21.5 24.5c-1.7 1.7-1.4 5.4 1.1 7.2 1.9 1.5 5.6 1.5 7-0.5l21.1-24.3c1.8-2.4 7.3-3.4 9.5-0.6 2.1 2.1 9.3 10.9 11.5 13.9 3.1 3.6 7.3 6.9 12.9 6.9 6.4 0 10.1-1.7 13.2-4.9l20.9-25.5c2-2 1.7-5.2 0-6.9z"/>
     <path fill="url(#SVGID_2_)" d="m105.3 2.5-2.9 0.5-21.3 24.1-9.2 9.5c-1.1 1-1.4 3.2 0 4.4l1.7 2c1.4 1.6 5 1.8 6.5 0l29.4-32.7c0.9-1 0.9-1 0.6-1 2-3-0.3-7.1-4.8-6.8z" />
     <path fill="url(#SVGID_3_)" d="m57.3 56.4c-0.9-1.4-1.9-3.1-3.4-3.9-1.8-0.7-4-0.4-5 1l-28.4 33.4c-2.4 2.1-2.1 5.6 0.5 7.7 1.5 1 3.7 1.3 5.5 0.5l1.4-0.7 29.4-33.6c0.8-1.2 1.1-3.2 0-4.4z" />
     <path fill="url(#SVGID_4_)" d="m36.1 85-7.9 8.6c-0.9 1-2.3 2-3.6 2h84.4c1.1-3 1.1-7 0-10.6h-72.9z" />
     <path fill="var(--text)" opacity="0.8" d="m36.2 134.9v4.5h-20.1v-3.5l12.8-14.9h-12.3v-4.4h19.1v3.4l-12.6 14.9h13.1zm18.8-6v10.2h-4.6v-2.1c-0.9 1.6-2.7 2.5-5.4 2.5-4 0-6.9-2.1-6.9-5.5 0-3 2.3-5.1 7.6-5.1h4.3c0-1.9-1.4-3.3-4-3.3-1.8 0-3.6 0.5-5.3 1.5l-2.1-3.3c2-1.4 5-2.1 8-2.1 5.3 0 8.4 2.4 8.4 7.2zm-5 4.7v-1.9h-3.4c-2.2 0-3.4 0.9-3.4 2.2 0 1.2 1 2.1 2.7 2.1s3.5-0.9 4.1-2.4zm8.7-16.9c0-1.3 1-2.8 3.2-2.8 1.8 0 3.1 1.2 3.1 2.7s-1.3 3-3.1 3c-2.2 0-3.2-1.2-3.2-2.9zm0.7 5.3h5.1v17.4h-5.1v-17.4zm20.8 16.6c-1 0.8-2.6 0.9-4.2 0.9-3.9 0-6.5-1.9-6.6-5.9v-7.5h-2.5v-3.7h2.6v-4.4h5.3v4.4h4.3v3.7h-4.2v7.5c0 1.3 0.8 2 2 1.9 0.7 0 1.5-0.1 2.2-0.6l1.1 3.7zm13.7-16.9v4.4c-3.8-0.5-5.5 1.5-5.5 4.9v8.4h-5.2v-17.4h4.8v2.1c1.1-1.5 3.1-2.4 5.9-2.4zm18.8 6.9v10.8h-5v-2.4c-0.8 1.6-2.6 2.5-5.2 2.5-3.9 0-7-1.9-7-5.5 0-3 2.4-5.1 7.6-5.1h4.1c0-2.3-1.5-3.3-4.1-3.3-1.6 0-3.4 0.5-4.9 1.5l-2.1-3.3c1.9-1.4 4.8-2.1 7.5-2.1 5.4-0.1 9.1 2.3 9.1 6.9zm-5.6 5.3v-2.2h-3.4c-2.1 0-3.2 1.2-3.2 2.2 0 1.2 1.1 2.1 2.9 2.1 1.6 0 3.2-0.6 3.7-2.1z" />
-    <path fill="var(--text)" opacity="0.6" d="m10.2 156.9v-5.2l-2.6 4.4h-0.4l-2.7-4.4v5.2h-1v-7.5h0.7l3.2 5 3-5h0.7v7.5h-0.9zm7.8-2.4h-4.4c0.1 0.9 0.9 1.6 2 1.6 0.6 0 1.1-0.2 1.5-0.6l0.6 0.6c-0.5 0.6-1.2 0.9-2.1 0.9-1.7 0-3-1.1-3-2.9 0-1.5 1.1-2.7 2.8-2.7 1.6 0 2.6 1.2 2.6 3v0.1zm-4.4-0.8h3.4c-0.1-0.8-0.8-1.6-1.6-1.6-1 0-1.7 0.8-1.8 1.6zm10.1-0.1v3.3h-0.8v-0.8c-0.3 0.5-0.9 0.9-1.8 0.9-1.2 0-2.1-0.6-2.1-1.6 0-0.9 0.6-1.8 2.2-1.8h1.7c0-0.7-0.4-1.5-1.5-1.5-0.7 0-1.3 0.3-1.8 0.5l-0.5-0.6c0.6-0.5 1.5-0.8 2.4-0.6 1.5 0 2.2 0.7 2.2 2.2zm-0.8 1.5v-0.7h-1.5c-1 0-1.3 0.5-1.3 1s0.5 0.7 1.3 0.7c0.6 0.3 1.2-0.1 1.5-1zm2 1.3 0.3-0.8c0.5 0.4 1.3 0.5 2 0.5 0.9 0 1.3-0.2 1.3-0.7 0-1.3-3.6 0-3.6-2.4 0-0.9 1-1.6 2.3-1.6 0.8 0 1.5 0.1 2.2 0.3l-0.4 0.9c-0.5-0.2-1.1-0.5-1.8-0.5-0.8 0-1.2 0.5-1.2 0.9 0 1.4 3.6 0 3.6 2.4 0 1-0.9 1.6-2.4 1.6-0.8 0-1.8-0.1-2.3-0.6zm10.8-5v5.5h-1v-0.8c-0.3 0.5-1 0.9-1.7 0.9-1.4 0-2.3-0.6-2.3-2.4v-3.2h1v3c0 1.1 0.7 1.6 1.5 1.6 1 0 1.5-0.5 1.5-1.6v-3h1zm5 0v1c-1.3-0.3-2.1 0.6-2.1 1.6v2.9h-1v-5.5h1v1c0.4-0.7 1.1-1 2.1-1zm6.3 3.1h-4.4c0.1 0.9 0.9 1.6 2 1.6 0.6 0 1.1-0.1 1.5-0.5l0.6 0.5c-0.5 0.6-1.2 0.9-2.1 0.9-1.7 0-3.2-1.1-3.2-2.9 0-1.5 1.2-2.7 2.8-2.7 1.5 0 2.8 1.2 2.8 3v0.1zm-4.4-0.8h3.4c-0.1-0.8-0.8-1.6-1.6-1.6-1 0-1.8 0.8-1.8 1.6zm13.9 2.2v1h-5.3v-7.4h5.2v1h-3.9v2.1h3.6v0.9h-3.6v2.4h4zm6.1-4.5-2.4 5.5h-1l-2.3-5.5h1.1l2 4.2 1.6-4.2h1zm5.5 3.1h-4.2c0.1 0.9 0.8 1.6 2 1.6 0.6 0 1.2-0.1 1.6-0.5l0.4 0.5c-0.5 0.6-1.2 0.9-2.2 0.9-1.6 0-2.7-1.1-2.7-2.9 0-1.5 1.2-2.7 2.6-2.7 1.8-0.3 2.5 1.2 2.5 2.7v0.4zm-4.2-0.8h3.2c-0.1-0.8-0.7-1.6-1.6-1.6s-1.5 0.8-1.6 1.6zm8.7-2.3v1c-1.2-0.3-2.1 0.6-2.1 1.6v2.9h-1v-5.5h0.9v1c0.3-0.7 1.2-1 2.2-1zm6.4 0-2.5 6c-0.5 1.2-1.1 1.6-2 1.6-0.5 0-1-0.3-1.4-0.5l0.5-0.8c0.3 0.2 0.6 0.4 0.9 0.4 0.5 0 0.9-0.2 1.1-1l0.1-0.2-2.3-5.5h1.1l1.9 4.2 1.7-4.2h0.9zm10.5 5.5v-5.2l-2.6 4.4h-0.2l-2.7-4.4v5h-1v-7.3h0.7l3.2 5 2.7-4.9h1v7.4h-1.1zm2.5-2.9c0-1.4 1.2-2.9 2.9-2.6 1.6 0 2.8 1.2 2.8 2.6 0 1.6-1.1 2.9-2.8 2.9-1.8 0.1-2.9-1.3-2.9-2.9zm4.7 0c0-1-0.7-1.9-1.8-1.9s-1.9 0.9-1.9 1.9 0.7 1.9 1.9 1.9 1.8-0.8 1.8-1.9zm11.5-0.4v3.3h-0.8v-3.3c0-1-0.7-1.5-1.4-1.5-0.9 0-1.6 0.8-1.6 1.5v3.3h-1.2v-3.3c0-1-0.6-1.5-1.5-1.5-0.8 0-1.6 0.8-1.6 1.5v3.1h-1.2v-5.3h1v0.7c0.3-0.6 1.1-1 1.8-0.7 0.8 0 1.5 0.1 2 0.7 0.5-0.4 1.2-1 2-0.7 1.5-0.3 2.5 0.7 2.5 2.2zm7.4 0.9h-4.7c0.2 0.9 1 1.6 2 1.6 0.7 0 1.2-0.1 1.6-0.5l0.7 0.5c-0.5 0.6-1.2 0.9-2.2 0.9-1.6 0-3.1-1-3.3-2.9 0-1.5 1.4-3 2.9-2.7 1.6-0.3 3 1.2 3 2.7v0.4zm-5-0.8h3.6c-0.1-0.8-0.7-1.6-1.7-1.6s-1.8 0.8-1.9 1.6zm11.5-0.1v3.3h-1v-3.3c0-1-0.6-1.5-1.5-1.5-1 0-1.7 0.8-1.6 1.5v3.1h-1.1v-5.3h0.8v0.7c0.5-0.6 1.3-1 1.9-0.7 1.4-0.3 2.5 0.7 2.5 2.2zm4.9 3c-0.3 0.3-0.6 0.4-1.3 0.4-1 0-1.7-0.4-1.7-1.6v-3.3h-0.9v-0.7h0.9v-1.3h1.2v1.3h1.5v0.7h-1.5v2.9c0 0.6 0.3 0.9 0.9 0.9 0.3 0 0.5 0 0.6-0.3l0.3 1z" />
   </svg>
 );
 
@@ -237,7 +236,7 @@ const App: React.FC = () => {
 
     return (
       <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto w-full">
-        <div className="flex justify-between items-end mb-2">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
           <div>
             <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[rgba(255,255,255,0.9)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
               Usage Analytics
@@ -256,7 +255,7 @@ const App: React.FC = () => {
           <h2 className="text-xl font-bold text-[var(--text)] mb-6 tracking-wide">Screen Time Trends</h2>
           <div className="flex-1 w-full min-h-0 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={mockTrend} margin={{ top: 10, right: 10, left: 25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
@@ -285,7 +284,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest">{app.name}</p>
-                <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1">{formatTime(Math.floor(app.time / 7))} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">/ day avg</span></p>
+                <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">today</span></p>
               </div>
             </div>
           ))}
@@ -367,11 +366,8 @@ const App: React.FC = () => {
 
       <div className="w-72 shrink-0 bg-black/30 border-r border-white/10 p-8 flex flex-col justify-between relative z-10 backdrop-blur-2xl shadow-[8px_0_30px_rgba(0,0,0,0.5)]">
         <div className="flex flex-col gap-10">
-          <div className="flex items-center gap-4 px-2">
-            <ZeitraLogo className="w-10 h-10 drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]" />
-            <span className="font-bold text-3xl tracking-wide bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] text-transparent bg-clip-text font-['Acorn',_sans-serif]">
-              Zeitra
-            </span>
+          <div className="px-2">
+            <ZeitraLogo className="w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]" />
           </div>
 
           <nav className="flex flex-col gap-3">
