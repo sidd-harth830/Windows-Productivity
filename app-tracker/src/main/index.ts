@@ -8,7 +8,9 @@ import icon from '../../resources/icon.png?asset'
 let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
 let lastCheckTime: number = Date.now();
-let lastUiUpdate: number = Date.now();
+
+// FIX: Setting this to 0 forces an INSTANT UI update on the very first tick!
+let lastUiUpdate: number = 0;
 
 const dataPath = join(app.getPath('userData'), 'usage-data.json');
 const pathsDataPath = join(app.getPath('userData'), 'app-paths.json');
@@ -22,15 +24,13 @@ let currentBlockList: Record<string, 'fully_blocked' | number> = {};
 let isQuitting = false;
 let tray: Tray | null = null;
 
-// User Preferences
 let trackSystemApps = false;
 let trackSelf = false;
 
-// Load Databases
 if (fs.existsSync(dataPath)) { try { appUsage = JSON.parse(fs.readFileSync(dataPath, 'utf-8')); } catch (e) { } }
 if (fs.existsSync(pathsDataPath)) { try { appPaths = JSON.parse(fs.readFileSync(pathsDataPath, 'utf-8')); } catch (e) { } }
 
-// PRE-FETCH ICONS INSTANTLY ON BOOT
+// INSTANT PRE-FETCH CACHE
 for (const [appName, exePath] of Object.entries(appPaths)) {
   if (exePath) {
     app.getFileIcon(exePath, { size: 'large' })
@@ -46,7 +46,6 @@ ipcMain.on('update-preferences', (_event, prefs) => {
   trackSelf = prefs.trackSelf ?? false;
 });
 
-// Premium Name Formatter
 function cleanAppName(rawName: string): string {
   let clean = rawName.replace(/\.exe$/i, '').trim();
   if (clean.toLowerCase() === 'code') return 'VS Code';
@@ -58,7 +57,6 @@ async function startTracking(mainWindow: BrowserWindow) {
   try {
     const activeWin = (await import('active-win')).default;
     
-    // FAST 2-SECOND CHECK LOOP FOR INSTANT FOCUS BLOCKING
     trackingInterval = setInterval(async () => {
       try {
         const windowInfo = await activeWin();
@@ -67,15 +65,13 @@ async function startTracking(mainWindow: BrowserWindow) {
           const rawName = windowInfo.owner.name; 
           const rawPath = windowInfo.owner.path || '';
           const actualExe = rawPath.split('\\').pop()?.toLowerCase() || rawName.toLowerCase();
-          
-          // Strip .exe and capitalize perfectly
           const displayAppName = cleanAppName(rawName);
 
           const now = Date.now();
           const timeDiff = Math.floor((now - lastCheckTime) / 1000);
           lastCheckTime = now;
 
-          // Fetch missing icons & save path for future boots
+          // WARM-UP CACHE: Save new paths instantly
           if (!appIcons[displayAppName] && rawPath) {
             try {
               const nativeIcon = await app.getFileIcon(rawPath, { size: 'large' });
@@ -85,7 +81,6 @@ async function startTracking(mainWindow: BrowserWindow) {
             } catch (e) {}
           }
 
-          // FOCUS MODE SHIELD
           if (isFocusModeEnabled) {
             let ruleToApply: 'fully_blocked' | number | null = null;
             for (const [blockedApp, rule] of Object.entries(currentBlockList)) {
@@ -102,15 +97,16 @@ async function startTracking(mainWindow: BrowserWindow) {
 
               if (isHardBlocked || isTimeExpired) {
                 exec(`taskkill /F /IM ${actualExe} /T`, () => {});
-                return; // Kill app and skip tracking time!
+                return; 
               }
             }
           }
 
-          // --- SYSTEM AND SELF FILTERING ENGINE ---
           const lowerPath = rawPath.toLowerCase();
           const isSystemApp = lowerPath.includes('\\windows\\') || lowerPath.includes('system32') || lowerPath.includes('windowsapps') || displayAppName.toLowerCase() === 'windows explorer' || displayAppName.toLowerCase() === 'searchhost';
-          const isSelfApp = displayAppName.toLowerCase().includes('forgepulse') || displayAppName.toLowerCase().includes('electron');
+          
+          // FIX: Added 'app-tracker' to catch the dev environment name!
+          const isSelfApp = displayAppName.toLowerCase().includes('forgepulse') || displayAppName.toLowerCase().includes('electron') || displayAppName.toLowerCase().includes('app-tracker');
 
           let shouldTrack = true;
           if (!trackSystemApps && isSystemApp) shouldTrack = false;
@@ -123,7 +119,6 @@ async function startTracking(mainWindow: BrowserWindow) {
           const appChanged = lastApp !== displayAppName;
           if (appChanged) lastApp = displayAppName;
 
-          // --- 60-SECOND UI UPDATE BATCHING ---
           const timeSinceLastUpdate = now - lastUiUpdate;
           if (appChanged || timeSinceLastUpdate >= 60000) {
             const liveUsageData = { ...appUsage };

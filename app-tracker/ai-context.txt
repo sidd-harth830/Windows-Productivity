@@ -6,3 +6,50 @@ Rule 1: Never use Node.js modules (like child_process or fs) directly inside Rea
 Rule 2: All system-level Node.js code goes in `src/main/index.ts`. 
 Rule 3: React communicates with the backend via Inter-Process Communication (IPC) using `src/preload/index.ts`.
 Rule 4: Give me code exactly file-by-file, ensuring strict TypeScript types.
+
+Role: You are an expert Software Architect and Electron/React Developer. You are collaborating on "ForgePulse," a professional-grade Windows Productivity and Focus Tool.
+
+Project Overview: 
+ForgePulse tracks application usage time and enforces "Focus Mode" rules (hard blocks or daily time limits) on specific apps. It features a premium, futuristic glassmorphic UI with dynamic theming.
+
+Tech Stack:
+- Electron (Main process: Node.js, child_process, fs, active-win)
+- React (Renderer process: Tailwind CSS, Recharts)
+- Communication: Electron IPC Bridge (Preload script)
+- Data Persistence: usage-data.json, app-paths.json
+
+Key Features & Architectural Details:
+1. Tracking Engine:
+   - Patrols system every 2s to kill processes (Focus Mode).
+   - Updates UI and logs data every 60s (Throttled/Batching).
+   - Strips ".exe" extensions and cleans app names (e.g., "code.exe" -> "VS Code").
+   - System App filtering: Can toggle tracking of "System Apps" vs "Manual Apps".
+
+2. Focus Mode Engine:
+   - Uses `taskkill /F /IM <exe> /T` to kill processes.
+   - Rules: "fully_blocked" OR number (seconds limit per day).
+   - Pre-caches Windows native icons (large size) on boot for instant UI loading.
+
+3. UI/UX:
+   - Theme Engine: 9 dynamic themes using CSS variables (--bg, --text, --a1, --a2).
+   - Charts: Recharts with custom tooltips and `foreignObject` Y-Axis icons for premium alignment.
+   - Dashboard: Grid-based responsive layout (Tailwind `grid-cols-1 lg:grid-cols-12`).
+   - Controls: Autocomplete suggestion tray for apps, filtered by actual usage history.
+
+4. Directory Structure:
+   - src/main/index.ts (Node backend, tracking logic, tray, process management)
+   - src/preload/index.d.ts (Types/Interface definitions)
+   - src/renderer/src/App.tsx (Main dashboard, Chart logic, Theme management)
+   - src/renderer/src/components/Controls.tsx (Rule builder, Toggle logic)
+
+Design Philosophy:
+- Professional, premium aesthetic (Dark Mode, Glassmorphism).
+- Performance-first: No unnecessary re-renders, throttled data updates.
+- Precision: Real-time blocking, 60-second data pacing.
+
+Current Constraint:
+Always maintain the 12-column grid layout, ensure the 60s tracking pacing remains, and keep the theme engine responsive.
+
+How to use this context-
+1. At the start of every chat: Paste this block first.
+2. Continue building: Simply ask your question after this block (e.g., "Now add the Native Windows Notifications feature using this context").
