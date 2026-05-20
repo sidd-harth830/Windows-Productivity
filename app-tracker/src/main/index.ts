@@ -45,35 +45,24 @@ async function startTracking(mainWindow: BrowserWindow) {
       try {
         const windowInfo = await activeWin();
         if (windowInfo && mainWindow) {
-          const currentApp = windowInfo.owner.name;
+          // --- THE GENIUS FIX ---
+          // Extract the EXACT executable name from the deep Windows file path (e.g., "chrome.exe")
+          const rawPath = windowInfo.owner.path || '';
+          const actualExe = rawPath.split('\\').pop()?.toLowerCase() || windowInfo.owner.name.toLowerCase();
+          
+          const currentApp = actualExe; 
           const now = Date.now();
 
           // --- DYNAMIC FOCUS MODE ENFORCEMENT ENGINE ---
           if (isFocusModeEnabled) {
-            const appName = currentApp.toLowerCase();
-            let processToKill: string | null = null;
-
-            // Check if the current app name or executable matches anything in the custom blocklist
-            const matchesBlocklist = currentBlockList.some(blockedItem => {
-              const cleanedItem = blockedItem.replace('.exe', '');
-              return appName.includes(cleanedItem);
-            });
-
-            if (matchesBlocklist) {
-              // Ensure we extract the exact executable extension format for taskkill
-              processToKill = appName.endsWith('.exe') ? appName : `${appName}.exe`;
+            // Because we now have the exact .exe, we just check if it's in our blocklist!
+            if (currentBlockList.includes(currentApp)) {
+              console.log(`[Focus Block] Guard caught restricted target: ${currentApp}. Shutting down...`);
               
-              // Custom safety maps for browsers that mask their internal process names
-              if (appName.includes('chrome')) processToKill = 'chrome.exe';
-              if (appName.includes('edge')) processToKill = 'msedge.exe';
-              if (appName.includes('brave')) processToKill = 'brave.exe';
-
-              console.log(`[Focus Block] Guard caught restricted target: ${appName}. Shutting down ${processToKill}...`);
-              
-              exec(`taskkill /F /IM ${processToKill} /T`, (err) => {
-                if (err) console.error(`Failed to close application: ${processToKill}`, err);
+              exec(`taskkill /F /IM ${currentApp} /T`, (err) => {
+                if (err) console.error(`Failed to close application: ${currentApp}`, err);
               });
-              return;
+              return; // Skip logging time for blocked apps
             }
           }
           // ---------------------------------------------
@@ -96,7 +85,7 @@ async function startTracking(mainWindow: BrowserWindow) {
           liveUsageData[currentApp] = totalFocusSeconds;
 
           mainWindow.webContents.send('window-update', {
-            name: currentApp,
+            name: currentApp, // UI will now show "chrome.exe" or "code.exe" cleanly
             title: windowInfo.title,
             focusTime: totalFocusSeconds,
             allUsage: liveUsageData
