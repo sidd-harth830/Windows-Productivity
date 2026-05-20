@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Tray, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import { exec } from 'child_process'
@@ -23,6 +23,7 @@ let isFocusModeEnabled = false;
 let currentBlockList: Record<string, 'fully_blocked' | number> = {};
 let isQuitting = false;
 let tray: Tray | null = null;
+let warningSent: Record<string, boolean> = {};
 
 let trackSystemApps = false;
 let trackSelf = false;
@@ -44,6 +45,19 @@ ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' |
 ipcMain.on('update-preferences', (_event, prefs) => {
   trackSystemApps = prefs.trackSystemApps ?? false;
   trackSelf = prefs.trackSelf ?? false;
+});
+
+ipcMain.handle('save-csv', async (_event, csvContent: string) => {
+  const { filePath } = await dialog.showSaveDialog({
+    title: 'Export Usage Data',
+    defaultPath: 'forgepulse-usage.csv',
+    filters: [{ name: 'CSV Files', extensions: ['csv'] }]
+  });
+  if (filePath) {
+    await fs.promises.writeFile(filePath, csvContent, 'utf-8');
+    return true;
+  }
+  return false;
 });
 
 function cleanAppName(rawName: string): string {
@@ -98,6 +112,17 @@ async function startTracking(mainWindow: BrowserWindow) {
               if (isHardBlocked || isTimeExpired) {
                 exec(`taskkill /F /IM ${actualExe} /T`, () => {});
                 return; 
+              }
+
+              if (!isHardBlocked && typeof ruleToApply === 'number') {
+                const timeLeft = ruleToApply - timeSpentToday;
+                if (timeLeft <= 300 && timeLeft > 0 && !warningSent[displayAppName]) {
+                  new Notification({
+                    title: 'Time Limit Approaching',
+                    body: `You have less than 5 minutes remaining for ${displayAppName}.`
+                  }).show();
+                  warningSent[displayAppName] = true;
+                }
               }
             }
           }

@@ -99,6 +99,24 @@ const App: React.FC = () => {
     return `${minutes}m`;
   };
 
+  const handleExportCsv = async () => {
+    if (!activeApp) return;
+    
+    const rows = [
+      ['Application', 'Time Spent (seconds)', 'Formatted Time'],
+      ...Object.entries(activeApp.allUsage).map(([app, time]) => [
+        `"${app}"`,
+        time,
+        `"${formatTime(time)}"`
+      ])
+    ];
+    
+    const csvContent = rows.map(e => e.join(",")).join("\n");
+    if (window.api && (window.api as any).saveCsv) {
+      await (window.api as any).saveCsv(csvContent);
+    }
+  };
+
   // Get ALL apps without .slice
   const chartData = activeApp
     ? Object.entries(activeApp.allUsage)
@@ -324,6 +342,23 @@ const App: React.FC = () => {
             </div>
             <button onClick={() => setTrackSelf(!trackSelf)} className={`w-14 h-8 flex flex-shrink-0 items-center rounded-full p-1 cursor-pointer transition-all duration-300 focus:outline-none ${trackSelf ? 'bg-[rgb(var(--a1))] shadow-[0_0_15px_rgba(var(--a1),0.5)]' : 'bg-white/10'}`}>
               <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${trackSelf ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h3 className="text-[var(--text)] font-bold text-xl border-b border-white/10 pb-3 tracking-wide">Data Management</h3>
+
+          <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-white/5 shadow-inner">
+            <div>
+              <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
+              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your complete application usage history as a CSV file.</p>
+            </div>
+            <button 
+              onClick={handleExportCsv}
+              className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)]"
+            >
+              EXPORT CSV
             </button>
           </div>
         </div>

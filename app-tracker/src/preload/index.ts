@@ -7,7 +7,10 @@ const api = {
   updateBlockList: (rules: any) => ipcRenderer.send('update-block-list', rules),
   
   // NEW: Emit preferences to the backend
-  updatePreferences: (prefs: any) => ipcRenderer.send('update-preferences', prefs)
+  updatePreferences: (prefs: any) => ipcRenderer.send('update-preferences', prefs),
+
+  // NEW: Save CSV
+  saveCsv: (content: string) => ipcRenderer.invoke('save-csv', content)
 }
 
 if (process.contextIsolated) {
