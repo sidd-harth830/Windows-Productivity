@@ -8,8 +8,8 @@ const api = {
   
   toggleFocusMode: (enabled: boolean) => ipcRenderer.send('toggle-focus-mode', enabled),
   
-  // NEW: Emit the updated blocklist array to the main process
-  updateBlockList: (list: string[]) => ipcRenderer.send('update-block-list', list)
+  // NEW: Emit the updated blocklist record to the main process
+  updateBlockList: (rules: Record<string, 'fully_blocked' | number>) => ipcRenderer.send('update-block-list', rules)
 }
 
 if (process.contextIsolated) {
