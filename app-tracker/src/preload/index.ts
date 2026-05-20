@@ -1,15 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-// Group ALL custom APIs together into one single object
 const api = {
-  onWindowUpdate: (callback: (data: any) => void) => 
-    ipcRenderer.on('window-update', (_event, data) => callback(data)),
-  
+  onWindowUpdate: (callback: (data: any) => void) => ipcRenderer.on('window-update', (_event, data) => callback(data)),
   toggleFocusMode: (enabled: boolean) => ipcRenderer.send('toggle-focus-mode', enabled),
+  updateBlockList: (rules: any) => ipcRenderer.send('update-block-list', rules),
   
-  // NEW: Emit the updated blocklist record to the main process
-  updateBlockList: (rules: Record<string, 'fully_blocked' | number>) => ipcRenderer.send('update-block-list', rules)
+  // NEW: Emit preferences to the backend
+  updatePreferences: (prefs: any) => ipcRenderer.send('update-preferences', prefs)
 }
 
 if (process.contextIsolated) {
@@ -17,11 +15,9 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
-    console.error('Failed to expose APIs via contextBridge:', error)
+    console.error(error)
   }
 } else {
-  // @ts-ignore
   window.electron = electronAPI
-  // @ts-ignore
   window.api = api
 }

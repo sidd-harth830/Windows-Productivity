@@ -7,74 +7,91 @@ import icon from '../../resources/icon.png?asset'
 
 let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
-let lastTime: number = Date.now();
+let lastCheckTime: number = Date.now();
+let lastUiUpdate: number = Date.now();
 
 const dataPath = join(app.getPath('userData'), 'usage-data.json');
-let appUsage: Record<string, number> = {};
+const pathsDataPath = join(app.getPath('userData'), 'app-paths.json');
 
-// --- GLOBAL TRACKING STATE ---
+let appUsage: Record<string, number> = {};
+let appPaths: Record<string, string> = {}; 
+let appIcons: Record<string, string> = {}; 
+
 let isFocusModeEnabled = false;
 let currentBlockList: Record<string, 'fully_blocked' | number> = {};
 let isQuitting = false;
 let tray: Tray | null = null;
 
-// NEW: Native Icon Storage Dictionary
-let appIcons: Record<string, string> = {}; 
+// User Preferences
+let trackSystemApps = false;
+let trackSelf = false;
 
-if (fs.existsSync(dataPath)) {
-  try {
-    appUsage = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
-  } catch (e) {
-    console.error("Failed to read usage data", e);
+// Load Databases
+if (fs.existsSync(dataPath)) { try { appUsage = JSON.parse(fs.readFileSync(dataPath, 'utf-8')); } catch (e) { } }
+if (fs.existsSync(pathsDataPath)) { try { appPaths = JSON.parse(fs.readFileSync(pathsDataPath, 'utf-8')); } catch (e) { } }
+
+// PRE-FETCH ICONS INSTANTLY ON BOOT
+for (const [appName, exePath] of Object.entries(appPaths)) {
+  if (exePath) {
+    app.getFileIcon(exePath, { size: 'large' })
+      .then(icon => appIcons[appName] = icon.toDataURL())
+      .catch(() => {}); 
   }
 }
 
-ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => {
-  isFocusModeEnabled = enabled;
-  console.log(`[System Sync] Focus Mode toggled to: ${enabled}`);
+ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => isFocusModeEnabled = enabled);
+ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' | number>) => currentBlockList = rules);
+ipcMain.on('update-preferences', (_event, prefs) => {
+  trackSystemApps = prefs.trackSystemApps ?? false;
+  trackSelf = prefs.trackSelf ?? false;
 });
 
-ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' | number>) => {
-  currentBlockList = rules;
-  console.log(`[System Sync] Blocklist rules updated:`, currentBlockList);
-});
+// Premium Name Formatter
+function cleanAppName(rawName: string): string {
+  let clean = rawName.replace(/\.exe$/i, '').trim();
+  if (clean.toLowerCase() === 'code') return 'VS Code';
+  if (clean.toLowerCase() === 'msedge') return 'Microsoft Edge';
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
 
 async function startTracking(mainWindow: BrowserWindow) {
   try {
     const activeWin = (await import('active-win')).default;
-    console.log("Started tracking Windows applications...");
     
+    // FAST 2-SECOND CHECK LOOP FOR INSTANT FOCUS BLOCKING
     trackingInterval = setInterval(async () => {
       try {
         const windowInfo = await activeWin();
         if (windowInfo && mainWindow) {
           
-          const displayAppName = windowInfo.owner.name; 
+          const rawName = windowInfo.owner.name; 
           const rawPath = windowInfo.owner.path || '';
-          const actualExe = rawPath.split('\\').pop()?.toLowerCase() || displayAppName.toLowerCase();
-          const now = Date.now();
+          const actualExe = rawPath.split('\\').pop()?.toLowerCase() || rawName.toLowerCase();
+          
+          // Strip .exe and capitalize perfectly
+          const displayAppName = cleanAppName(rawName);
 
-          // --- NATIVE ICON EXTRACTION ---
-          // If we haven't fetched the icon for this app yet, pull it from Windows!
+          const now = Date.now();
+          const timeDiff = Math.floor((now - lastCheckTime) / 1000);
+          lastCheckTime = now;
+
+          // Fetch missing icons & save path for future boots
           if (!appIcons[displayAppName] && rawPath) {
             try {
-              const nativeIcon = await app.getFileIcon(rawPath, { size: 'normal' });
-              appIcons[displayAppName] = nativeIcon.toDataURL(); // Convert to Base64 for React
-            } catch (e) {
-              console.error(`Could not fetch icon for ${displayAppName}`, e);
-            }
+              const nativeIcon = await app.getFileIcon(rawPath, { size: 'large' });
+              appIcons[displayAppName] = nativeIcon.toDataURL(); 
+              appPaths[displayAppName] = rawPath;
+              fs.promises.writeFile(pathsDataPath, JSON.stringify(appPaths)).catch(()=>{});
+            } catch (e) {}
           }
-          // ------------------------------
 
-          // --- ADVANCED FOCUS ENFORCEMENT ENGINE ---
+          // FOCUS MODE SHIELD
           if (isFocusModeEnabled) {
             let ruleToApply: 'fully_blocked' | number | null = null;
-
             for (const [blockedApp, rule] of Object.entries(currentBlockList)) {
               const term = blockedApp.toLowerCase();
               if (displayAppName.toLowerCase().includes(term) || actualExe.includes(term)) {
-                ruleToApply = rule;
-                break;
+                ruleToApply = rule; break;
               }
             }
 
@@ -84,94 +101,71 @@ async function startTracking(mainWindow: BrowserWindow) {
               const isTimeExpired = typeof ruleToApply === 'number' && timeSpentToday >= ruleToApply;
 
               if (isHardBlocked || isTimeExpired) {
-                exec(`taskkill /F /IM ${actualExe} /T`, (err) => {
-                  if (err) console.error(`Failed to close application: ${actualExe}`, err);
-                });
-                return; 
+                exec(`taskkill /F /IM ${actualExe} /T`, () => {});
+                return; // Kill app and skip tracking time!
               }
             }
           }
-          // ---------------------------------------------
 
-          if (lastApp && lastApp !== displayAppName) {
-            const timeSpent = Math.floor((now - lastTime) / 1000);
-            appUsage[lastApp] = (appUsage[lastApp] || 0) + timeSpent;
-            await fs.promises.writeFile(dataPath, JSON.stringify(appUsage));
+          // --- SYSTEM AND SELF FILTERING ENGINE ---
+          const lowerPath = rawPath.toLowerCase();
+          const isSystemApp = lowerPath.includes('\\windows\\') || lowerPath.includes('system32') || lowerPath.includes('windowsapps') || displayAppName.toLowerCase() === 'windows explorer' || displayAppName.toLowerCase() === 'searchhost';
+          const isSelfApp = displayAppName.toLowerCase().includes('forgepulse') || displayAppName.toLowerCase().includes('electron');
+
+          let shouldTrack = true;
+          if (!trackSystemApps && isSystemApp) shouldTrack = false;
+          if (!trackSelf && isSelfApp) shouldTrack = false;
+
+          if (shouldTrack) {
+            appUsage[displayAppName] = (appUsage[displayAppName] || 0) + timeDiff;
           }
 
-          if (lastApp !== displayAppName) {
-            lastApp = displayAppName;
-            lastTime = now;
+          const appChanged = lastApp !== displayAppName;
+          if (appChanged) lastApp = displayAppName;
+
+          // --- 60-SECOND UI UPDATE BATCHING ---
+          const timeSinceLastUpdate = now - lastUiUpdate;
+          if (appChanged || timeSinceLastUpdate >= 60000) {
+            const liveUsageData = { ...appUsage };
+
+            mainWindow.webContents.send('window-update', {
+              name: displayAppName, 
+              title: windowInfo.title,
+              focusTime: liveUsageData[displayAppName] || 0,
+              allUsage: liveUsageData,
+              appIcons: appIcons
+            });
+
+            fs.promises.writeFile(dataPath, JSON.stringify(liveUsageData)).catch(()=>{});
+            lastUiUpdate = now;
           }
 
-          const currentSessionTime = Math.floor((now - lastTime) / 1000);
-          const totalFocusSeconds = (appUsage[displayAppName] || 0) + currentSessionTime;
-          
-          const liveUsageData = { ...appUsage };
-          liveUsageData[displayAppName] = totalFocusSeconds;
-
-          mainWindow.webContents.send('window-update', {
-            name: displayAppName, 
-            title: windowInfo.title,
-            focusTime: totalFocusSeconds,
-            allUsage: liveUsageData,
-            appIcons: appIcons // Send the icon database to React
-          });
         }
-      } catch (err) {
-        console.error("Error reading active window:", err);
-      }
+      } catch (err) {}
     }, 2000); 
-  } catch (error) {
-    console.error("Failed to import active-win:", error);
-  }
+  } catch (error) {}
 }
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    show: false,
-    autoHideMenuBar: true,
+    width: 1280, height: 850, minWidth: 1000, minHeight: 700,
+    show: false, autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true
-    }
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   });
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show();
-  });
+  mainWindow.on('ready-to-show', () => mainWindow.show());
+  mainWindow.webContents.setWindowOpenHandler((details) => { shell.openExternal(details.url); return { action: 'deny' }; });
+  mainWindow.on('close', (event) => { if (!isQuitting) { event.preventDefault(); mainWindow.hide(); } });
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
-    return { action: 'deny' };
-  });
-
-  mainWindow.on('close', (event) => {
-    if (!isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-    }
-  });
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-  }
-
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) { mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']); } 
+  else { mainWindow.loadFile(join(__dirname, '../renderer/index.html')); }
   return mainWindow;
 }
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');
-
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window);
-  });
+  app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window));
 
   const mainWindow = createWindow();
 
@@ -180,43 +174,15 @@ app.whenReady().then(() => {
     { label: 'ForgePulse Engine Live', enabled: false },
     { type: 'separator' },
     { label: 'Show Dashboard', click: () => mainWindow.show() },
-    { 
-      label: 'Quit ForgePulse', 
-      click: () => {
-        isQuitting = true; 
-        app.quit();
-      } 
-    }
+    { label: 'Quit ForgePulse', click: () => { isQuitting = true; app.quit(); } }
   ]);
   
   tray.setToolTip('ForgePulse - Tracking Active');
   tray.setContextMenu(contextMenu);
-
-  tray.on('double-click', () => {
-    mainWindow.show();
-  });
+  tray.on('double-click', () => mainWindow.show());
 
   startTracking(mainWindow);
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('before-quit', () => {
-  if (lastApp) {
-    const timeSpent = Math.floor((Date.now() - lastTime) / 1000);
-    appUsage[lastApp] = (appUsage[lastApp] || 0) + timeSpent;
-    try {
-      fs.writeFileSync(dataPath, JSON.stringify(appUsage));
-    } catch (e) {
-      console.error("Failed to save final usage data", e);
-    }
-  }
-});
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
