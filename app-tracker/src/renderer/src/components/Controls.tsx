@@ -7,8 +7,16 @@ interface ControlsProps {
     setBlockList: (list: string[]) => void;
 }
 
+// Built-in database of common distracting executables for the Autocomplete Tray
+const COMMON_APPS = [
+    'chrome.exe', 'msedge.exe', 'brave.exe', 'firefox.exe', 'opera.exe',
+    'discord.exe', 'spotify.exe', 'steam.exe', 'epicgameslauncher.exe',
+    'vlc.exe', 'telegram.exe', 'whatsapp.exe', 'netflix.exe', 'notepad.exe'
+];
+
 const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockList, setBlockList }) => {
     const [inputValue, setInputValue] = useState<string>('');
+    const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
     const handleToggleFocus = () => {
         const nextState = !isFocusMode;
@@ -18,20 +26,30 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         }
     };
 
-    const handleAddApp = (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmed = inputValue.trim().toLowerCase();
+    const handleAddApp = (appToAdd: string) => {
+        let trimmed = appToAdd.trim().toLowerCase();
+
+        // Auto-append .exe if the user forgot to type it
+        if (trimmed && !trimmed.endsWith('.exe')) {
+            trimmed += '.exe';
+        }
 
         if (trimmed && !blockList.includes(trimmed)) {
             const updatedList = [...blockList, trimmed];
             setBlockList(updatedList);
             setInputValue('');
+            setShowSuggestions(false);
 
             // Send the updated array across the IPC channel to Windows backend
             if (window.api && window.api.updateBlockList) {
                 window.api.updateBlockList(updatedList);
             }
         }
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleAddApp(inputValue);
     };
 
     const handleRemoveApp = (appToRemove: string) => {
@@ -42,6 +60,11 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
             window.api.updateBlockList(updatedList);
         }
     };
+
+    // Filter suggestions based on what the user is typing
+    const filteredSuggestions = COMMON_APPS.filter(app =>
+        app.includes(inputValue.toLowerCase()) && !blockList.includes(app)
+    );
 
     return (
         <div className="flex flex-col gap-8">
@@ -71,6 +94,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </div>
                     </div>
 
+                    {/* PERFECT ROUNDED TOGGLE BUTTON */}
                     <button
                         onClick={handleToggleFocus}
                         className={`w-14 h-8 flex flex-shrink-0 items-center rounded-full p-1 cursor-pointer transition-colors duration-300 focus:outline-none ${isFocusMode ? 'bg-purple-500' : 'bg-gray-600'
@@ -87,25 +111,56 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         🛡️ Custom App Blocklist
                     </h3>
 
-                    {/* Form Entry */}
-                    <form onSubmit={handleAddApp} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            placeholder="e.g. spotify.exe, notepad"
-                            className="flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
-                        />
-                        <button
-                            type="submit"
-                            className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer"
-                        >
-                            Add
-                        </button>
-                    </form>
+                    {/* AUTOCOMPLETE FORM */}
+                    <div className="relative">
+                        <form onSubmit={handleSubmit} className="flex gap-2">
+                            <input
+                                type="text"
+                                value={inputValue}
+                                onFocus={() => setShowSuggestions(true)}
+                                onChange={(e) => {
+                                    setInputValue(e.target.value);
+                                    setShowSuggestions(true);
+                                }}
+                                placeholder="Search apps (e.g. spotify)"
+                                className="flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors relative z-20"
+                            />
+                            <button
+                                type="submit"
+                                className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer relative z-20"
+                            >
+                                Add
+                            </button>
+                        </form>
+
+                        {/* THE TRAY (Dropdown Menu) */}
+                        {showSuggestions && inputValue.length > 0 && filteredSuggestions.length > 0 && (
+                            <div className="absolute top-full left-0 w-[calc(100%-70px)] mt-2 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+                                {filteredSuggestions.slice(0, 5).map(app => (
+                                    <button
+                                        key={app}
+                                        type="button"
+                                        onClick={() => handleAddApp(app)}
+                                        className="text-left px-4 py-3 text-sm text-gray-300 hover:bg-purple-500/20 hover:text-white transition-colors border-b border-white/5 last:border-0 cursor-pointer flex justify-between items-center"
+                                    >
+                                        <span>{app}</span>
+                                        <span className="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded">.exe</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Click-away backdrop to close the tray */}
+                        {showSuggestions && (
+                            <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setShowSuggestions(false)}
+                            />
+                        )}
+                    </div>
 
                     {/* List Display */}
-                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1 mt-2">
                         {blockList.map((app) => (
                             <div key={app} className="flex items-center justify-between bg-white/5 border border-white/5 px-4 py-2 rounded-xl text-sm">
                                 <span className="text-gray-300 font-mono">{app}</span>
