@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie } from 'recharts'
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
+import NoData from './components/NoData'
 import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
@@ -252,7 +253,7 @@ const App: React.FC = () => {
     if (active && payload && payload.length) {
       const iconUrl = activeApp?.appIcons?.[label];
       return (
-        <div className="bg-[var(--bg)]/95 backdrop-blur-xl border border-[var(--panel-border)] p-4 rounded-xl shadow-xl flex items-center gap-4">
+        <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-2xl flex items-center gap-4">
           <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
             {iconUrl ? <img src={iconUrl} alt={label} className="max-w-full max-h-full object-contain drop-shadow-md" /> : <GenericAppIcon />}
           </div>
@@ -344,24 +345,22 @@ const App: React.FC = () => {
 
         <div className="stagger-item grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0" style={{ animationDelay: '0.15s' }}>
           <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-6 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-xl cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, displayAppName)}>
-            <div className="w-16 h-16 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-2">
+            <div className="relative w-16 h-16 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-2">
               {activeApp?.appIcons?.[displayAppName] ? (
                 <img src={activeApp.appIcons[displayAppName]} alt="Most Used App" className="max-w-[44px] max-h-[44px] object-contain drop-shadow-md" />
               ) : (
                 <div className="w-8 h-8"><GenericAppIcon /></div>
               )}
+              {lastActiveValidApp === displayAppName && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 shrink-0" title="Currently Active">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
+                </span>
+              )}
             </div>
             <div className="flex flex-col justify-center min-h-[80px] overflow-hidden">
               <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Most Used App</span>
-              <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate flex items-center gap-3">
-                {displayAppName}
-              {lastActiveValidApp === displayAppName && (
-                  <span className="relative flex h-3 w-3 shrink-0" title="Currently Active">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                  </span>
-                )}
-              </span>
+              <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate">{displayAppName}</span>
             </div>
           </div>
 
@@ -401,36 +400,44 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
-            <div style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
+            {filteredChartData.length > 0 ? (
+              <div style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
 
-                  <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
+                    <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
 
-                  <Bar
-                    dataKey="time"
-                    radius={[0, 8, 8, 0]}
-                    barSize={32}
-                    isAnimationActive={true}
-                    animationDuration={1200}
-                    animationEasing="ease-out"
-                    activeBar={{
-                      stroke: 'rgb(var(--a1))',
-                      strokeWidth: 2,
-                      fill: 'rgba(var(--a1), 0.1)',
-                      filter: 'drop-shadow(0 0 8px rgba(var(--a1), 0.5))',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {filteredChartData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                    <Bar
+                      dataKey="time"
+                      radius={[0, 8, 8, 0]}
+                      barSize={32}
+                      isAnimationActive={true}
+                      animationDuration={1200}
+                      animationEasing="ease-out"
+                      activeBar={{
+                        stroke: 'rgb(var(--a1))',
+                        strokeWidth: 2,
+                        fill: 'rgba(var(--a1), 0.1)',
+                        filter: 'drop-shadow(0 0 8px rgba(var(--a1), 0.5))',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {filteredChartData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
+                <NoData className="w-64 h-64 opacity-40" />
+                <p className="font-bold tracking-widest uppercase text-sm mt-4">No Application Data</p>
+                <p className="text-xs mt-1">Start using some apps to see your footprint.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -526,7 +533,12 @@ const App: React.FC = () => {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar 
                         mode="range" 
-                        defaultMonth={new Date(analyticsStartDate + "T00:00:00")}
+                        defaultMonth={(() => {
+                          const d = new Date(analyticsStartDate + "T00:00:00");
+                          d.setMonth(d.getMonth() - 1);
+                          return d;
+                        })()}
+                        disabled={{ after: new Date() }}
                         selected={{ from: new Date(analyticsStartDate + "T00:00:00"), to: new Date(analyticsEndDate + "T00:00:00") }} 
                         onSelect={(range: any) => {
                           if (range?.from) {
@@ -543,6 +555,19 @@ const App: React.FC = () => {
                         initialFocus 
                         numberOfMonths={2}
                       />
+                      <div className="p-3 border-t border-[var(--panel-border)]">
+                        <button 
+                          onClick={() => {
+                            const t = new Date().toISOString().split('T')[0];
+                            setAnalyticsStartDate(t);
+                            setAnalyticsEndDate(t);
+                            setDatePreset('today');
+                          }}
+                          className="w-full bg-[rgba(var(--a1),0.1)] hover:bg-[rgba(var(--a1),0.2)] text-[rgb(var(--a1))] text-sm font-bold py-2 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Reset to Today
+                        </button>
+                      </div>
                     </PopoverContent>
                   </Popover>
                 </>
@@ -585,9 +610,9 @@ const App: React.FC = () => {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text)] opacity-50">
-                <Monitor className="w-12 h-12 mb-4 opacity-20" />
-                <p className="font-bold tracking-widest uppercase text-sm">No usage data for this date</p>
+              <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
+                <NoData className="w-64 h-64 opacity-40" />
+                <p className="font-bold tracking-widest uppercase text-sm mt-4">No Usage Data For This Range</p>
               </div>
             )}
           </div>
@@ -635,7 +660,10 @@ const App: React.FC = () => {
               )})}
               {filteredAnalyticsApps.length === 0 && (
                 <div className="col-span-1 md:col-span-2 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
-                   <span className="text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">Waiting for logs...</span>
+                   <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
+                    <NoData className="w-40 h-40 opacity-40" />
+                    <p className="font-bold tracking-widest uppercase text-sm mt-4">No Apps Found</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -659,7 +687,7 @@ const App: React.FC = () => {
                               ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1) 
                               : '0.0';
                             return (
-                              <div className="bg-[var(--bg)]/95 backdrop-blur-xl border border-[var(--panel-border)] p-3 rounded-xl shadow-xl z-50">
+                              <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-3 rounded-xl shadow-2xl z-50">
                                 <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{payload[0].name}</p>
                                 <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">
                                   {formatTime(payload[0].value)} <span className="text-[var(--text)] opacity-60 ml-1">({percent}%)</span>
@@ -682,7 +710,10 @@ const App: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">No Data</div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
+                  <NoData className="w-32 h-32 opacity-40" />
+                  <p className="font-bold tracking-widest uppercase text-xs mt-4">No Categories Found</p>
+                </div>
               )}
             </div>
           </div>
@@ -753,7 +784,12 @@ const App: React.FC = () => {
                 <PopoverContent className="w-auto p-0" align="end">
                   <Calendar 
                     mode="range" 
-                    defaultMonth={new Date(exportStartDate + "T00:00:00")}
+                    defaultMonth={(() => {
+                      const d = new Date(exportStartDate + "T00:00:00");
+                      d.setMonth(d.getMonth() - 1);
+                      return d;
+                    })()}
+                    disabled={{ after: new Date() }}
                     selected={{ from: new Date(exportStartDate + "T00:00:00"), to: new Date(exportEndDate + "T00:00:00") }} 
                     onSelect={(range: any) => {
                       if (range?.from) {
@@ -770,6 +806,18 @@ const App: React.FC = () => {
                     initialFocus 
                     numberOfMonths={2}
                   />
+                  <div className="p-3 border-t border-[var(--panel-border)]">
+                    <button 
+                      onClick={() => {
+                        const t = new Date().toISOString().split('T')[0];
+                        setExportStartDate(t);
+                        setExportEndDate(t);
+                      }}
+                      className="w-full bg-[rgba(var(--a1),0.1)] hover:bg-[rgba(var(--a1),0.2)] text-[rgb(var(--a1))] text-sm font-bold py-2 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Reset to Today
+                    </button>
+                  </div>
                 </PopoverContent>
               </Popover>
               <button 
