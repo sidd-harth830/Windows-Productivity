@@ -19,6 +19,7 @@ const App: React.FC = () => {
   // 1. All hooks declared cleanly at the top!
   const [activeTab, setActiveTab] = useState<'dashboard' | 'controls' | 'settings' | 'analytics'>('dashboard');
   const [activeApp, setActiveApp] = useState<WindowData | null>(null);
+  const [lastActiveValidApp, setLastActiveValidApp] = useState<string | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [blockList, setBlockList] = useState<Record<string, 'fully_blocked' | number>>({});
   const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
@@ -93,9 +94,17 @@ const App: React.FC = () => {
   };
 
   const isAppValid = (appName: string) => {
-    if (trackSelf) return true;
     const lower = appName.toLowerCase();
-    return !lower.includes('zeitra') && !lower.includes('forgepulse') && !lower.includes('electron') && !lower.includes('app-tracker');
+    
+    if (!trackSelf && (lower.includes('zeitra') || lower.includes('forgepulse') || lower.includes('electron') || lower.includes('app-tracker'))) {
+      return false;
+    }
+
+    if (!trackSystemApps && (lower.includes('windows explorer') || lower.includes('searchhost') || lower.includes('startmenuexperiencehost') || lower.includes('taskmgr') || lower.includes('system idle process'))) {
+      return false;
+    }
+
+    return true;
   };
 
   useEffect(() => {
@@ -106,6 +115,12 @@ const App: React.FC = () => {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (activeApp?.name && isAppValid(activeApp.name)) {
+      setLastActiveValidApp(activeApp.name);
+    }
+  }, [activeApp?.name, trackSelf, trackSystemApps]);
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -193,7 +208,7 @@ const App: React.FC = () => {
   // Get ALL apps without .slice
   const dashboardData = activeApp
     ? Object.entries(activeApp.allUsage)
-      .filter(([name]) => isAppValid(name))
+      .filter(([name, time]) => isAppValid(name) && time >= 60)
       .map(([name, time]) => ({ name, time }))
       .sort((a, b) => b.time - a.time)
     : [];
@@ -211,7 +226,7 @@ const App: React.FC = () => {
   });
 
   const analyticsChartData = Object.entries(analyticsUsage)
-      .filter(([name]) => isAppValid(name))
+      .filter(([name, time]) => isAppValid(name) && (time as number) >= 60)
       .map(([name, time]) => ({ name, time: time as number }))
       .sort((a, b) => b.time - a.time);
 
@@ -238,7 +253,7 @@ const App: React.FC = () => {
   const CustomYAxisTick = ({ x, y, payload }: any) => {
     const val = payload?.value || '';
     const iconUrl = activeApp?.appIcons?.[val];
-    const isActive = activeApp?.name === val;
+    const isActive = lastActiveValidApp === val;
     const text = val.length > 18 ? val.substring(0, 15) + '...' : val;
     return (
       <g transform={`translate(${x},${y})`} className="cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, val)}>
@@ -288,7 +303,8 @@ const App: React.FC = () => {
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
-    const displayTime = mostUsedApp ? formatTime(mostUsedApp.time) : "0m";
+    const totalTodayUptime = dashboardData.reduce((acc, curr) => acc + curr.time, 0);
+    const displayTotalTime = formatTime(totalTodayUptime);
 
     const filteredChartData = dashboardData
       .filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()))
@@ -321,7 +337,7 @@ const App: React.FC = () => {
               <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Most Used App</span>
               <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate flex items-center gap-3">
                 {displayAppName}
-                {activeApp?.name === displayAppName && (
+              {lastActiveValidApp === displayAppName && (
                   <span className="relative flex h-3 w-3 shrink-0" title="Currently Active">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
@@ -332,9 +348,9 @@ const App: React.FC = () => {
           </div>
 
           <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-6 rounded-3xl flex flex-col justify-center min-h-[128px] hover:border-[rgba(var(--a2),0.4)] transition-all duration-300 shadow-xl">
-            <span className="text-[var(--text)] opacity-50 text-xs mb-2 uppercase tracking-widest font-black">Total App Time</span>
+          <span className="text-[var(--text)] opacity-50 text-xs mb-2 uppercase tracking-widest font-black">Total Today Uptime</span>
             <span className="text-4xl font-black text-[var(--text)] tracking-wider">
-              {displayTime}
+            {displayTotalTime}
             </span>
           </div>
         </div>
@@ -557,7 +573,7 @@ const App: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
               {filteredAnalyticsApps.map((app) => {
-                const isActive = activeApp?.name === app.name;
+                const isActive = lastActiveValidApp === app.name;
                 return (
                 <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-xl border p-6 rounded-3xl flex items-center gap-5 shadow-lg transition-colors cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'}`}>
                   <div className={`w-14 h-14 rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
