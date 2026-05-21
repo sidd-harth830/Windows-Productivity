@@ -10,13 +10,17 @@ interface ControlsProps {
     setBlockList: (list: Record<string, BlockRule>) => void;
     availableApps: string[];
     appIcons: Record<string, string>;
+    allUsage: Record<string, number>;
+    showToast: (title: string, message: string) => void;
 }
 
-const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockList, setBlockList, availableApps, appIcons }) => {
+const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockList, setBlockList, availableApps, appIcons, allUsage, showToast }) => {
     const [inputValue, setInputValue] = useState<string>('');
     const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
     const [ruleType, setRuleType] = useState<'block' | 'timer'>('block');
     const [timeLimitMinutes, setTimeLimitMinutes] = useState<number>(30);
+    const [offlineActivity, setOfflineActivity] = useState<string>('');
+    const [offlineMinutes, setOfflineMinutes] = useState<number>(30);
 
     const handleToggleFocus = () => {
         const nextState = !isFocusMode;
@@ -55,6 +59,32 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         !Object.keys(blockList).some(blocked => blocked.toLowerCase() === app.toLowerCase())
     );
 
+    const handleAddOfflineTime = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmed = offlineActivity.trim();
+        if (!trimmed) return;
+        
+        if (window.api && (window.api as any).addOfflineTime) {
+            const success = await (window.api as any).addOfflineTime(trimmed, offlineMinutes);
+            if (success) {
+                setOfflineActivity('');
+                setOfflineMinutes(30);
+                showToast('Activity Logged', `Added ${offlineMinutes}m of offline time for "${trimmed}".`);
+            }
+        }
+    };
+
+    const offlineApps = Object.keys(allUsage).filter(app => app.endsWith('(Offline)'));
+
+    const handleDeleteOffline = async (appName: string) => {
+        if (window.api && (window.api as any).removeAppUsage) {
+            const success = await (window.api as any).removeAppUsage(appName);
+            if (success) {
+                showToast('Log Deleted', `Removed "${appName}".`);
+            }
+        }
+    };
+
     return (
         <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
             <div className="shrink-0">
@@ -83,6 +113,51 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 <div className={`bg-white w-7 h-7 rounded-full shadow-md transform transition-transform duration-300 ${isFocusMode ? 'translate-x-7' : 'translate-x-0'}`} />
                             </button>
                         </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-black/40 to-black/20 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl flex flex-col gap-6 transition-all duration-300 shadow-2xl ring-1 ring-white/5">
+                        <div className="flex items-start justify-between w-full gap-4">
+                            <div className="flex flex-col gap-2">
+                                <div className="p-3.5 w-14 h-14 rounded-2xl flex items-center justify-center bg-[var(--bg)] border-white/10 text-[var(--text)] opacity-50 shadow-inner border">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-full h-full">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                                    </svg>
+                                </div>
+                                <h3 className="font-bold text-xl text-[var(--text)] mt-3">Offline Log</h3>
+                                <p className="text-sm text-[var(--text)] opacity-60 leading-relaxed font-medium">Add time manually for reading, meetings, or brainstorming away from the screen.</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleAddOfflineTime} className="flex flex-col gap-3 relative z-30 mt-2">
+                            <input
+                                type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
+                                placeholder="Activity (e.g., Reading Book)"
+                                className="w-full bg-[var(--bg)] border border-white/10 rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all font-bold shadow-inner" required
+                            />
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-[var(--bg)] border border-[rgba(var(--a1),0.5)] shadow-[0_0_15px_rgba(var(--a1),0.15)] rounded-xl px-4 py-2 w-1/2">
+                                    <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value))} className="w-full bg-transparent text-[rgb(var(--a1))] text-center font-black text-lg focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)]" required />
+                                    <span className="text-[var(--text)] opacity-50 font-bold pr-1">MIN</span>
+                                </div>
+                                <button type="submit" className="w-1/2 bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-4 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
+                                    ADD TIME
+                                </button>
+                            </div>
+                        </form>
+
+                        {offlineApps.length > 0 && (
+                            <div className="mt-2 border-t border-white/10 pt-4 flex flex-col gap-2">
+                                <span className="text-xs text-[var(--text)] opacity-50 uppercase tracking-widest font-black mb-1">Recent Offline Entries</span>
+                                {offlineApps.map(app => (
+                                    <div key={app} className="flex items-center justify-between bg-black/20 px-4 py-3 rounded-xl border border-white/5 shadow-inner">
+                                        <span className="text-sm font-bold text-[var(--text)]">{app} <span className="opacity-50 ml-1">({Math.round(allUsage[app]/60)}m)</span></span>
+                                        <button type="button" onClick={() => handleDeleteOffline(app)} className="text-[rgb(var(--a2))] opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid } from 'recharts'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
 import Controls from './components/Controls'
 
 export type ThemeKey = 'neon' | 'obsidian' | 'royal' | 'forest' | 'vibrancy' | 'jewel' | 'pastels' | 'warm' | 'mono';
@@ -64,13 +62,14 @@ const App: React.FC = () => {
   const [activeApp, setActiveApp] = useState<WindowData | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [blockList, setBlockList] = useState<Record<string, 'fully_blocked' | number>>({});
-  const [isExporting, setIsExporting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
   const analyticsRef = useRef<HTMLDivElement>(null);
 
+  const [dashboardSearch, setDashboardSearch] = useState<string>('');
   // FIX: Moved timeframe state up to the root level!
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
 
@@ -102,7 +101,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (window.api && window.api.onWindowUpdate) {
-      window.api.onWindowUpdate((data: WindowData) => setActiveApp(data));
+      window.api.onWindowUpdate((data: WindowData) => {
+        setActiveApp(data);
+        setIsLoading(false); // Hide the loading screen as soon as the first payload arrives
+      });
     }
   }, []);
 
@@ -132,52 +134,6 @@ const App: React.FC = () => {
         showToast('CSV Exported', 'Your data was successfully saved.');
       }
     }
-  };
-
-  const handleExportPdf = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
-    if (!ref.current) return;
-    setIsExporting(true);
-    try {
-      const canvas = await html2canvas(ref.current, {
-        scale: 2,
-        backgroundColor: THEMES[theme].bg,
-        useCORS: true,
-        logging: false,
-        onclone: (clonedDoc) => {
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = '*::-webkit-scrollbar { display: none !important; } * { scrollbar-width: none !important; }';
-          clonedDoc.head.appendChild(style);
-        }
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-      
-      // Convert to a base64 string to safely pass over Electron's IPC bridge
-      const pdfDataUri = pdf.output('datauristring');
-      const base64Data = pdfDataUri.split(',')[1];
-      
-      if (window.api && (window.api as any).savePdf) {
-        const success = await (window.api as any).savePdf(base64Data, filename);
-        if (success) {
-          showToast('PDF Exported', `Saved as ${filename}`);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to export PDF', error);
-      showToast('Export Failed', 'An error occurred while exporting.');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const exportPdfFromSettings = (tab: 'dashboard' | 'analytics') => {
-    setActiveTab(tab);
-    setTimeout(() => {
-      const dateStr = new Date().toISOString().split('T')[0];
-      const ref = tab === 'dashboard' ? dashboardRef : analyticsRef;
-      handleExportPdf(ref, `forgepulse-${tab}-${dateStr}.pdf`);
-    }, 600);
   };
 
   // Get ALL apps without .slice
@@ -210,17 +166,17 @@ const App: React.FC = () => {
 
   const CustomYAxisTick = ({ x, y, payload }: any) => {
     const iconUrl = activeApp?.appIcons?.[payload.value];
+    // FIX: Using native SVG tags instead of <foreignObject> so html2canvas doesn't crash during PDF Export!
+    const text = payload.value.length > 18 ? payload.value.substring(0, 15) + '...' : payload.value;
     return (
-      <foreignObject x={x - 170} y={y - 12} width="160" height="24">
-        <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center justify-end gap-3 h-full w-full pr-2">
-          <span className="text-[var(--text)] opacity-80 text-[13px] font-semibold truncate max-w-[110px] text-right">
-            {payload.value}
-          </span>
-          <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
-            {iconUrl ? <img src={iconUrl} alt="" className="max-w-full max-h-full object-contain drop-shadow-sm" /> : <GenericAppIcon />}
-          </div>
-        </div>
-      </foreignObject>
+      <g transform={`translate(${x},${y})`}>
+        <text x="-40" y="4" textAnchor="end" fill="var(--text)" opacity="0.8" fontSize="13" fontWeight="bold">
+          {text}
+        </text>
+        {iconUrl && (
+          <image href={iconUrl} xlinkHref={iconUrl} x="-30" y="-12" width="20" height="20" />
+        )}
+      </g>
     );
   };
 
@@ -228,6 +184,8 @@ const App: React.FC = () => {
     const mostUsedApp = chartData.length > 0 ? chartData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
     const displayTime = mostUsedApp ? formatTime(mostUsedApp.time) : "0m";
+
+    const filteredChartData = chartData.filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()));
 
     return (
       <div ref={dashboardRef} className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto pb-4 p-4 rounded-xl">
@@ -238,22 +196,6 @@ const App: React.FC = () => {
             </h1>
             <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
           </div>
-          <button 
-            data-html2canvas-ignore="true"
-            disabled={isExporting}
-            onClick={() => {
-              const dateStr = new Date().toISOString().split('T')[0];
-              handleExportPdf(dashboardRef, `forgepulse-dashboard-${dateStr}.pdf`);
-            }}
-            className={`bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-4 py-2 rounded-lg text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            {isExporting ? (
-              <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-            )}
-            {isExporting ? 'PROCESSING...' : 'EXPORT PDF'}
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
@@ -282,11 +224,25 @@ const App: React.FC = () => {
         </div>
 
         <div className="bg-gradient-to-br from-black/40 to-black/20 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl flex-1 flex flex-col shadow-2xl ring-1 ring-white/5 min-h-[400px]">
-          <h2 className="text-xl font-bold text-[var(--text)] mb-8 tracking-wide">All App Footprints</h2>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <h2 className="text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
+            <div className="relative w-full md:w-64 print:hidden">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search apps..."
+                value={dashboardSearch}
+                onChange={(e) => setDashboardSearch(e.target.value)}
+                className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner"
+              />
+            </div>
+          </div>
           <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
-            <div style={{ height: `${Math.max(300, chartData.length * 60)}px` }}>
+            <div style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
+                <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
 
@@ -296,6 +252,9 @@ const App: React.FC = () => {
                     dataKey="time"
                     radius={[0, 8, 8, 0]}
                     barSize={32}
+                    isAnimationActive={true}
+                    animationDuration={1200}
+                    animationEasing="ease-out"
                     activeBar={{
                       stroke: 'rgb(var(--a1))',
                       strokeWidth: 2,
@@ -304,7 +263,7 @@ const App: React.FC = () => {
                       cursor: 'pointer'
                     }}
                   >
-                    {chartData.map((_, index) => (
+                    {filteredChartData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
                     ))}
                   </Bar>
@@ -343,28 +302,12 @@ const App: React.FC = () => {
             <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex gap-2 p-1.5 bg-black/40 rounded-xl border border-white/5 shadow-inner" data-html2canvas-ignore="true">
+          <div className="flex items-center gap-4 print:hidden">
+            <div className="flex gap-2 p-1.5 bg-black/40 rounded-xl border border-white/5 shadow-inner">
               <button onClick={() => setTimeframe('daily')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'daily' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Daily</button>
               <button onClick={() => setTimeframe('weekly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'weekly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Weekly</button>
               <button onClick={() => setTimeframe('monthly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'monthly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Monthly</button>
             </div>
-            <button 
-              data-html2canvas-ignore="true"
-              disabled={isExporting}
-              onClick={() => {
-                const dateStr = new Date().toISOString().split('T')[0];
-                handleExportPdf(analyticsRef, `forgepulse-analytics-${dateStr}.pdf`);
-              }}
-              className={`bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-4 py-2.5 rounded-lg text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2 h-full ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              {isExporting ? (
-                <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-              )}
-              {isExporting ? 'WAIT' : 'PDF'}
-            </button>
           </div>
         </div>
 
@@ -387,7 +330,18 @@ const App: React.FC = () => {
                   contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(var(--a1), 0.3)', borderRadius: '12px', color: '#fff', fontWeight: 'bold' }}
                   formatter={(value: number) => [formatTime(value), 'Total Time']}
                 />
-                <Area type="monotone" dataKey="time" stroke="rgb(var(--a1))" strokeWidth={4} fillOpacity={1} fill="url(#colorTime)" activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }} />
+                <Area 
+                  type="monotone" 
+                  dataKey="time" 
+                  stroke="rgb(var(--a1))" 
+                  strokeWidth={4} 
+                  fillOpacity={1} 
+                  fill="url(#colorTime)" 
+                  isAnimationActive={true}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
+                  activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }} 
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -451,9 +405,9 @@ const App: React.FC = () => {
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-white/5 shadow-inner gap-4">
             <div>
               <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
-              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your complete application usage history as a CSV or export visual PDFs from the Dashboard/Analytics tabs.</p>
+              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your complete application usage history as a CSV.</p>
             </div>
-            <div className="flex flex-wrap gap-3 mt-3 xl:mt-0">
+            <div className="flex gap-3 mt-3 xl:mt-0">
               <button 
                 onClick={handleExportCsv}
                 className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center gap-2"
@@ -463,25 +417,25 @@ const App: React.FC = () => {
                 </svg>
                 EXPORT CSV
               </button>
-
-              <button 
-                onClick={() => exportPdfFromSettings('dashboard')}
-                disabled={isExporting}
-                className={`bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-5 py-3 rounded-xl text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                DASHBOARD PDF
-              </button>
-              
-              <button 
-                onClick={() => exportPdfFromSettings('analytics')}
-                disabled={isExporting}
-                className={`bg-transparent border border-[rgb(var(--a2))] text-[rgb(var(--a2))] hover:bg-[rgba(var(--a2),0.1)] px-5 py-3 rounded-xl text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a2),0.1)] flex items-center gap-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                ANALYTICS PDF
-              </button>
             </div>
+          </div>
+
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-white/5 shadow-inner gap-4">
+            <div>
+              <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Edit Raw Data</h4>
+              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Securely open your usage-data.json in your default text editor to manually override values.</p>
+            </div>
+            <button 
+              onClick={() => {
+                if (window.api && (window.api as any).openUsageData) {
+                  (window.api as any).openUsageData();
+                }
+              }}
+              className="bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+              EDIT JSON
+            </button>
           </div>
         </div>
 
@@ -513,6 +467,28 @@ const App: React.FC = () => {
 
   const activeTheme = THEMES[theme];
 
+  if (isLoading) {
+    return (
+      <div
+        className="h-screen flex items-center justify-center relative font-sans transition-colors duration-500"
+        style={{ backgroundColor: activeTheme.bg, '--bg': activeTheme.bg, '--text': activeTheme.text, '--a1': activeTheme.a1, '--a2': activeTheme.a2 } as React.CSSProperties}
+      >
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.2] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.2] animate-pulse"></div>
+        
+        <div className="flex flex-col items-center gap-8 z-10 animate-in fade-in zoom-in duration-500">
+          <div className="animate-pulse drop-shadow-[0_0_20px_rgba(var(--a1),0.4)]">
+            <ZeitraLogo className="w-32 h-auto" />
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <svg className="animate-spin h-8 w-8 text-[rgb(var(--a1))]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span className="text-[var(--text)] opacity-60 text-sm font-black tracking-widest uppercase mt-2">Initializing Engine...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500"
@@ -521,7 +497,7 @@ const App: React.FC = () => {
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
 
-      <div className="w-72 shrink-0 bg-black/30 border-r border-white/10 p-8 flex flex-col justify-between relative z-10 backdrop-blur-2xl shadow-[8px_0_30px_rgba(0,0,0,0.5)]">
+      <div className="w-72 shrink-0 bg-black/30 border-r border-white/10 p-8 flex flex-col justify-between relative z-10 backdrop-blur-2xl shadow-[8px_0_30px_rgba(0,0,0,0.5)] print:hidden">
         <div className="flex flex-col gap-10">
           <div className="px-2">
             <ZeitraLogo className="w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]" />
@@ -580,7 +556,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      <main className="flex-1 p-10 overflow-y-auto relative z-10 w-full h-full">
+      <main className="flex-1 p-10 overflow-y-auto relative z-10 w-full h-full print:p-0 print:overflow-visible">
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'analytics' && renderAnalytics()}
         {activeTab === 'settings' && renderSettings()}
@@ -591,7 +567,9 @@ const App: React.FC = () => {
             blockList={blockList}
             setBlockList={setBlockList}
             availableApps={activeApp ? Object.keys(activeApp.allUsage).filter(isAppValid) : []}
+            allUsage={activeApp ? activeApp.allUsage : {}}
             appIcons={activeApp ? activeApp.appIcons : {}}
+            showToast={showToast}
           />
         )}
       </main>

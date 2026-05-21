@@ -24,6 +24,7 @@ let currentBlockList: Record<string, 'fully_blocked' | number> = {};
 let isQuitting = false;
 let tray: Tray | null = null;
 let warningSent: Record<string, boolean> = {};
+let halfWarningSent: Record<string, boolean> = {};
 
 let trackSystemApps = false;
 let trackSelf = false;
@@ -48,9 +49,10 @@ ipcMain.on('update-preferences', (_event, prefs) => {
 });
 
 ipcMain.handle('save-csv', async (_event, csvContent: string) => {
+  const dateStr = new Date().toISOString().split('T')[0];
   const { filePath } = await dialog.showSaveDialog({
     title: 'Export Usage Data',
-    defaultPath: 'forgepulse-usage.csv',
+    defaultPath: `ForgePulse-Analytics-${dateStr}.csv`,
     filters: [{ name: 'CSV Files', extensions: ['csv'] }]
   });
   if (filePath) {
@@ -60,24 +62,58 @@ ipcMain.handle('save-csv', async (_event, csvContent: string) => {
   return false;
 });
 
-ipcMain.handle('save-pdf', async (_event, base64Str: string, filename?: string) => {
+ipcMain.handle('open-usage-data', async () => {
   try {
-    const downloadsPath = app.getPath('downloads');
-    const finalFilename = filename || `forgepulse-usage-${Date.now()}.pdf`;
-    const filePath = join(downloadsPath, finalFilename);
-    
-    await fs.promises.writeFile(filePath, Buffer.from(base64Str, 'base64'));
-    
-    new Notification({
-      title: 'PDF Export Complete',
-      body: `Successfully saved to Downloads folder.`
-    }).show();
-    
-    // Automatically opens Windows Explorer and highlights the file!
-    shell.showItemInFolder(filePath);
+    await shell.openPath(dataPath);
     return true;
-  } catch (error) {
-    console.error('Failed to auto-save PDF:', error);
+  } catch (e) {
+    return false;
+  }
+});
+
+ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes: number) => {
+  try {
+    const displayAppName = activityName.trim() + ' (Offline)';
+    const seconds = minutes * 60;
+    appUsage[displayAppName] = (appUsage[displayAppName] || 0) + seconds;
+    await fs.promises.writeFile(dataPath, JSON.stringify(appUsage));
+    lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
+    
+    // Force an instant update to the frontend immediately!
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('window-update', {
+        name: lastApp || 'Desktop',
+        title: '',
+        focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
+        allUsage: appUsage,
+        appIcons: appIcons
+      });
+    });
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+});
+
+ipcMain.handle('remove-app-usage', async (_event, appName: string) => {
+  try {
+    delete appUsage[appName];
+    await fs.promises.writeFile(dataPath, JSON.stringify(appUsage));
+    lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
+    
+    // Force an instant update to the frontend immediately!
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('window-update', {
+        name: lastApp || 'Desktop',
+        title: '',
+        focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
+        allUsage: appUsage,
+        appIcons: appIcons
+      });
+    });
+    return true;
+  } catch (e) {
     return false;
   }
 });
@@ -87,6 +123,13 @@ function cleanAppName(rawName: string): string {
   if (clean.toLowerCase() === 'code') return 'VS Code';
   if (clean.toLowerCase() === 'msedge') return 'Microsoft Edge';
   return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function formatTime(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 async function startTracking(mainWindow: BrowserWindow) {
@@ -161,6 +204,11 @@ async function startTracking(mainWindow: BrowserWindow) {
 
           if (shouldTrack) {
             appUsage[displayAppName] = (appUsage[displayAppName] || 0) + timeDiff;
+            if (tray) {
+              tray.setToolTip(`ForgePulse\nActive: ${displayAppName} (${formatTime(appUsage[displayAppName])})`);
+            }
+          } else if (tray) {
+            tray.setToolTip('ForgePulse - Tracking System Process');
           }
 
           const appChanged = lastApp !== displayAppName;
