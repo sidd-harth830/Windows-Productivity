@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState<boolean>(false);
+  const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; appName: string } | null>(null);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -148,12 +149,15 @@ const App: React.FC = () => {
   };
 
   const handleClearData = async () => {
-    if (window.confirm("Are you sure you want to completely clear all recorded usage data? This action cannot be undone.")) {
-      if (window.api && (window.api as any).clearUsageData) {
-        const success = await (window.api as any).clearUsageData();
-        if (success) {
-          showToast('Data Cleared', 'All usage history has been permanently deleted.');
-        }
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearData = async () => {
+    setShowClearConfirm(false);
+    if (window.api && (window.api as any).clearUsageData) {
+      const success = await (window.api as any).clearUsageData();
+      if (success) {
+        showToast('Data Cleared', 'All usage history has been permanently deleted.');
       }
     }
   };
@@ -744,21 +748,48 @@ const App: React.FC = () => {
   if (isLoading) {
     return (
       <div
-        className="h-screen flex items-center justify-center relative font-sans transition-colors duration-500 overflow-hidden"
+        className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500"
         style={{ backgroundColor: activeTheme.bg, '--bg': activeTheme.bg, '--text': activeTheme.text, '--a1': activeTheme.a1, '--a2': activeTheme.a2, '--panel-bg': activeTheme.panelBg, '--panel-border': activeTheme.panelBorder } as React.CSSProperties}
       >
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.2] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.2] animate-pulse"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
         
-        <div className="flex flex-col items-center gap-8 z-10 animate-in fade-in zoom-in duration-500">
-          <div className="animate-pulse drop-shadow-[0_0_20px_rgba(var(--a1),0.4)]">
-            <ZeitraLogo className="w-32 h-auto" />
+        {/* Sidebar Skeleton */}
+        <div className="w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-8 flex flex-col justify-between relative z-10 backdrop-blur-2xl shadow-2xl print:hidden animate-pulse">
+          <div className="flex flex-col gap-10">
+            <div className="px-2 h-12 w-32 bg-[var(--panel-border)] opacity-50 rounded-lg"></div>
+            <nav className="flex flex-col gap-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-14 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
+              ))}
+            </nav>
           </div>
-          <div className="flex flex-col items-center gap-3">
-            <svg className="animate-spin h-8 w-8 text-[rgb(var(--a1))]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            <span className="text-[var(--text)] opacity-60 text-sm font-black tracking-widest uppercase mt-2">Initializing Engine...</span>
+          <div className="flex flex-col gap-4">
+            <div className="h-12 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
+            <div className="h-16 w-full bg-[var(--panel-border)] opacity-30 rounded-2xl"></div>
           </div>
         </div>
+
+        {/* Dashboard Skeleton */}
+        <main className="flex-1 p-10 overflow-y-auto relative z-10 w-full h-full">
+          <div className="flex flex-col h-full gap-8 max-w-6xl mx-auto pb-4 p-4 rounded-xl animate-in fade-in duration-300">
+            <div className="flex flex-col gap-3 mb-2">
+              <div className="h-14 w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
+              <div className="h-6 w-64 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
+              <div className="h-28 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-3xl animate-pulse"></div>
+              <div className="h-28 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-3xl animate-pulse"></div>
+            </div>
+            <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[400px]">
+              <div className="flex justify-between items-center mb-8 gap-4">
+                <div className="h-8 w-48 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50"></div>
+                <div className="h-10 w-80 bg-[var(--panel-border)] rounded-xl animate-pulse opacity-30 hidden md:block"></div>
+              </div>
+              <div className="flex-1 w-full bg-[var(--panel-border)] rounded-2xl animate-pulse opacity-20"></div>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -872,6 +903,32 @@ const App: React.FC = () => {
               <RefreshCw className="w-4 h-4" />
               Refresh Icon
             </button>
+          </div>
+        </>
+      )}
+
+      {/* Confirmation Modal */}
+      {showClearConfirm && (
+        <>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] animate-in fade-in duration-200" onClick={() => setShowClearConfirm(false)}></div>
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-8 rounded-3xl shadow-2xl flex flex-col gap-6 min-w-[400px] animate-in zoom-in-95 duration-200">
+            <div>
+              <h3 className="text-xl font-bold text-red-400 mb-2 flex items-center gap-3">
+                <ShieldAlert className="w-6 h-6" />
+                Clear All Data?
+              </h3>
+              <p className="text-[var(--text)] opacity-70 text-sm font-medium leading-relaxed max-w-sm">
+                This will permanently delete all recorded application history and offline logs. This action cannot be undone. Are you absolutely sure?
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 mt-2">
+              <button onClick={() => setShowClearConfirm(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-[var(--text)] opacity-70 hover:opacity-100 hover:bg-[var(--panel-border)] transition-all cursor-pointer">
+                Cancel
+              </button>
+              <button onClick={confirmClearData} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-red-500 text-white hover:brightness-125 shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer">
+                Yes, Clear Data
+              </button>
+            </div>
           </div>
         </>
       )}
