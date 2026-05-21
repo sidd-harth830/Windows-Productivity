@@ -65,7 +65,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         e.preventDefault();
         const trimmed = offlineActivity.trim();
         if (!trimmed) return;
-
+        
         if (window.api && (window.api as any).addOfflineTime) {
             const success = await (window.api as any).addOfflineTime(trimmed, offlineMinutes);
             if (success) {
@@ -156,7 +156,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 <span className="text-xs text-[var(--text)] opacity-50 uppercase tracking-widest font-black mb-1">Recent Offline Entries</span>
                                 {offlineApps.map(app => (
                                     <div key={app} className="flex items-center justify-between bg-[var(--panel-bg)] px-4 py-3 rounded-xl border border-[var(--panel-border)] shadow-inner">
-                                        <span className="text-sm font-bold text-[var(--text)]">{app} <span className="opacity-50 ml-1">({Math.round(allUsage[app] / 60)}m)</span></span>
+                                        <span className="text-sm font-bold text-[var(--text)]">{app} <span className="opacity-50 ml-1">({Math.round(allUsage[app]/60)}m)</span></span>
                                         <button type="button" onClick={() => handleDeleteOffline(app)} className="text-[rgb(var(--a2))] opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer">
                                             <X className="w-5 h-5" strokeWidth={2.5} />
                                         </button>
@@ -200,21 +200,23 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                     className="h-14 border-2 rounded-xl px-5 text-base font-bold"
                                 />
                                 {showSuggestions && filteredSuggestions.length > 0 && (
-                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">
-                                        {filteredSuggestions.map(app => (
-                                            <button
-                                                key={app}
-                                                type="button"
-                                                onClick={() => handleAddApp(app)}
-                                                className="text-left px-5 py-4 text-sm text-[var(--text)] hover:bg-[rgba(var(--a1),0.2)] transition-colors border-b border-[var(--panel-border)] last:border-0 cursor-pointer font-bold flex items-center gap-4"
-                                            >
-                                                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 drop-shadow-md">
-                                                    {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
-                                                </div>
-                                                <span className="flex-grow text-base tracking-wide">{app}</span>
-                                                <span className="text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-3 py-1 rounded font-black border border-[rgba(var(--a1),0.2)] tracking-widest">SELECT</span>
-                                            </button>
-                                        ))}
+                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col">
+                                        <div className="flex flex-col max-h-60 overflow-y-auto custom-scrollbar">
+                                            {filteredSuggestions.map(app => (
+                                                <button
+                                                    key={app}
+                                                    type="button"
+                                                    onClick={() => handleAddApp(app)}
+                                                    className="text-left px-5 py-4 text-sm text-[var(--text)] hover:bg-[rgba(var(--a1),0.2)] transition-colors border-b border-[var(--panel-border)] last:border-0 cursor-pointer font-bold flex items-center gap-4"
+                                                >
+                                                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 drop-shadow-md">
+                                                        {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
+                                                    </div>
+                                                    <span className="flex-grow text-base tracking-wide">{app}</span>
+                                                    <span className="text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-3 py-1 rounded font-black border border-[rgba(var(--a1),0.2)] tracking-widest">SELECT</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -246,7 +248,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             <span>Target App</span>
                             <span>Enforcement Rule</span>
                         </div>
-                        <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-4">
+                        <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
                             {Object.entries(blockList).map(([app, rule]) => (
                                 <div key={app} onContextMenu={(e) => onContextMenu?.(e, app)} className="flex items-center justify-between bg-[var(--bg)] border border-[var(--panel-border)] p-4 rounded-xl text-sm group transition-all hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg cursor-context-menu">
                                     <div className="flex items-center gap-4">

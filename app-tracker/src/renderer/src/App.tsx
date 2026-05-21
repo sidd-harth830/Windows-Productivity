@@ -731,144 +731,145 @@ const App: React.FC = () => {
         <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Customize your tracking and visual experience.</p>
       </div>
 
-      <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex flex-col gap-10 shadow-xl flex-1 overflow-y-auto" style={{ animationDelay: '0.15s' }}>
+      <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] rounded-3xl shadow-xl flex-1 flex flex-col overflow-hidden" style={{ animationDelay: '0.15s' }}>
+        <div className="p-8 pr-4 flex flex-col gap-10 overflow-y-auto custom-scrollbar h-full">
+          <div className="flex flex-col gap-4">
+            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Tracking Engine</h3>
 
-        <div className="flex flex-col gap-4">
-          <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Tracking Engine</h3>
-
-          <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
-                <HardDrive className="w-6 h-6 text-[rgb(var(--a1))]" />
+            <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
+                  <HardDrive className="w-6 h-6 text-[rgb(var(--a1))]" />
+                </div>
+                <div>
+                  <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Track Windows System Apps</h4>
+                  <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include internal OS components like Windows Explorer and Search.</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Track Windows System Apps</h4>
-                <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include internal OS components like Windows Explorer and Search.</p>
-              </div>
+              <Switch checked={trackSystemApps} onCheckedChange={setTrackSystemApps} />
             </div>
-            <Switch checked={trackSystemApps} onCheckedChange={setTrackSystemApps} />
+
+            <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
+                  <Eye className="w-6 h-6 text-[rgb(var(--a2))]" />
+                </div>
+                <div>
+                  <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Track Zeitra Usage</h4>
+                  <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include the time spent staring at this dashboard in your statistics.</p>
+                </div>
+              </div>
+              <Switch checked={trackSelf} onCheckedChange={setTrackSelf} />
+            </div>
           </div>
 
-          <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
-                <Eye className="w-6 h-6 text-[rgb(var(--a2))]" />
-              </div>
+          <div className="flex flex-col gap-4">
+            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Data Management</h3>
+
+            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
               <div>
-                <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Track Zeitra Usage</h4>
-                <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include the time spent staring at this dashboard in your statistics.</p>
+                <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
+                <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your application usage history as a CSV for external analysis.</p>
               </div>
-            </div>
-            <Switch checked={trackSelf} onCheckedChange={setTrackSelf} />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Data Management</h3>
-
-          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
-            <div>
-              <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
-              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your application usage history as a CSV for external analysis.</p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-3 xl:mt-0 w-full xl:w-auto">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="bg-[var(--panel-bg)] border border-[var(--panel-border)] text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[rgba(var(--a1),0.1)] px-4 py-3 rounded-xl transition-colors text-left min-w-[210px] flex items-center justify-center gap-2 shadow-inner">
-                    <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    {exportStartDate === exportEndDate 
-                      ? format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")
-                      : `${format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")} - ${format(new Date(exportEndDate + "T00:00:00"), "MMM d, yyyy")}`}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar 
-                    mode="range" 
-                    defaultMonth={(() => {
-                      const d = new Date(exportStartDate + "T00:00:00");
-                      d.setMonth(d.getMonth() - 1);
-                      return d;
-                    })()}
-                    disabled={{ after: new Date() }}
-                    selected={{ from: new Date(exportStartDate + "T00:00:00"), to: new Date(exportEndDate + "T00:00:00") }} 
-                    onSelect={(range: any) => {
-                      if (range?.from) {
-                        const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth()+1).padStart(2,'0')}-${String(range.from.getDate()).padStart(2,'0')}`;
-                        setExportStartDate(fromStr);
-                        if (range.to) {
-                          const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth()+1).padStart(2,'0')}-${String(range.to.getDate()).padStart(2,'0')}`;
-                          setExportEndDate(toStr);
-                        } else {
-                          setExportEndDate(fromStr);
-                        }
-                      }
-                    }} 
-                    initialFocus 
-                    numberOfMonths={2}
-                  />
-                  <div className="p-3 border-t border-[var(--panel-border)]">
-                    <button 
-                      onClick={() => {
-                        const t = new Date().toISOString().split('T')[0];
-                        setExportStartDate(t);
-                        setExportEndDate(t);
-                      }}
-                      className="w-full bg-[rgba(var(--a1),0.1)] hover:bg-[rgba(var(--a1),0.2)] text-[rgb(var(--a1))] text-sm font-bold py-2 rounded-lg transition-colors cursor-pointer"
-                    >
-                      Reset to Today
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-3 xl:mt-0 w-full xl:w-auto">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="bg-[var(--panel-bg)] border border-[var(--panel-border)] text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[rgba(var(--a1),0.1)] px-4 py-3 rounded-xl transition-colors text-left min-w-[210px] flex items-center justify-center gap-2 shadow-inner">
+                      <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      {exportStartDate === exportEndDate 
+                        ? format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")
+                        : `${format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")} - ${format(new Date(exportEndDate + "T00:00:00"), "MMM d, yyyy")}`}
                     </button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <button 
-                onClick={handleExportCsv}
-                className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center justify-center gap-2"
-              >
-                <Download className="w-5 h-5" />
-                EXPORT CSV
-              </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar 
+                      mode="range" 
+                      defaultMonth={(() => {
+                        const d = new Date(exportStartDate + "T00:00:00");
+                        d.setMonth(d.getMonth() - 1);
+                        return d;
+                      })()}
+                      disabled={{ after: new Date() }}
+                      selected={{ from: new Date(exportStartDate + "T00:00:00"), to: new Date(exportEndDate + "T00:00:00") }} 
+                      onSelect={(range: any) => {
+                        if (range?.from) {
+                          const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth()+1).padStart(2,'0')}-${String(range.from.getDate()).padStart(2,'0')}`;
+                          setExportStartDate(fromStr);
+                          if (range.to) {
+                            const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth()+1).padStart(2,'0')}-${String(range.to.getDate()).padStart(2,'0')}`;
+                            setExportEndDate(toStr);
+                          } else {
+                            setExportEndDate(fromStr);
+                          }
+                        }
+                      }} 
+                      initialFocus 
+                      numberOfMonths={2}
+                    />
+                    <div className="p-3 border-t border-[var(--panel-border)]">
+                      <button 
+                        onClick={() => {
+                          const t = new Date().toISOString().split('T')[0];
+                          setExportStartDate(t);
+                          setExportEndDate(t);
+                        }}
+                        className="w-full bg-[rgba(var(--a1),0.1)] hover:bg-[rgba(var(--a1),0.2)] text-[rgb(var(--a1))] text-sm font-bold py-2 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Reset to Today
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <button 
+                  onClick={handleExportCsv}
+                  className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center justify-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  EXPORT CSV
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-4 pb-10">
-          <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Appearance Options</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['system', 'light', 'dark'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setThemePref(t)}
-                className={`flex items-center justify-center gap-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer ${themePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
-              >
-                {t === 'system' && <Monitor className="w-5 h-5 text-[var(--text)] opacity-80" />}
-                {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
-                {t === 'dark' && <Moon className="w-5 h-5 text-[var(--text)] opacity-80" />}
-                <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t} Mode</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide text-red-400">Danger Zone</h3>
-
-          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-red-500/5 p-5 rounded-2xl border border-red-500/20 shadow-inner gap-4">
-            <div>
-              <h4 className="text-red-400 font-bold text-base tracking-wide">Clear All Usage Data</h4>
-              <p className="text-sm text-red-400/70 mt-1 max-w-lg font-medium">Permanently delete all recorded application history and offline logs. This cannot be undone.</p>
-            </div>
-            <div className="flex gap-3 mt-3 xl:mt-0">
-              <button 
-                onClick={handleClearData}
-                className="bg-red-500 hover:brightness-125 text-white px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center gap-2"
-              >
-                <X className="w-5 h-5" strokeWidth={3} />
-                CLEAR DATA
-              </button>
+          <div className="flex flex-col gap-4 pb-10">
+            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Appearance Options</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(['system', 'light', 'dark'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setThemePref(t)}
+                  className={`flex items-center justify-center gap-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer ${themePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
+                >
+                  {t === 'system' && <Monitor className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                  {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                  {t === 'dark' && <Moon className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                  <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t} Mode</span>
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
+          <div className="flex flex-col gap-4">
+            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide text-red-400">Danger Zone</h3>
+
+            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-red-500/5 p-5 rounded-2xl border border-red-500/20 shadow-inner gap-4">
+              <div>
+                <h4 className="text-red-400 font-bold text-base tracking-wide">Clear All Usage Data</h4>
+                <p className="text-sm text-red-400/70 mt-1 max-w-lg font-medium">Permanently delete all recorded application history and offline logs. This cannot be undone.</p>
+              </div>
+              <div className="flex gap-3 mt-3 xl:mt-0">
+                <button 
+                  onClick={handleClearData}
+                  className="bg-red-500 hover:brightness-125 text-white px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center gap-2"
+                >
+                  <X className="w-5 h-5" strokeWidth={3} />
+                  CLEAR DATA
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );
