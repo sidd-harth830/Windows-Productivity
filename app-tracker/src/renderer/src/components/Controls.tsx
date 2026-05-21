@@ -65,7 +65,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         e.preventDefault();
         const trimmed = offlineActivity.trim();
         if (!trimmed) return;
-        
+
         if (window.api && (window.api as any).addOfflineTime) {
             const success = await (window.api as any).addOfflineTime(trimmed, offlineMinutes);
             if (success) {
@@ -156,7 +156,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 <span className="text-xs text-[var(--text)] opacity-50 uppercase tracking-widest font-black mb-1">Recent Offline Entries</span>
                                 {offlineApps.map(app => (
                                     <div key={app} className="flex items-center justify-between bg-[var(--panel-bg)] px-4 py-3 rounded-xl border border-[var(--panel-border)] shadow-inner">
-                                        <span className="text-sm font-bold text-[var(--text)]">{app} <span className="opacity-50 ml-1">({Math.round(allUsage[app]/60)}m)</span></span>
+                                        <span className="text-sm font-bold text-[var(--text)]">{app} <span className="opacity-50 ml-1">({Math.round(allUsage[app] / 60)}m)</span></span>
                                         <button type="button" onClick={() => handleDeleteOffline(app)} className="text-[rgb(var(--a2))] opacity-70 hover:opacity-100 hover:scale-110 transition-all cursor-pointer">
                                             <X className="w-5 h-5" strokeWidth={2.5} />
                                         </button>
