@@ -29,6 +29,7 @@ let halfWarningSent: Record<string, boolean> = {};
 
 let trackSystemApps = false;
 let trackSelf = false;
+let hiddenApps: string[] = [];
 
 // --- ENCRYPTION ENGINE ---
 const SECRET_KEY = crypto.scryptSync('forgepulse-secure-key-2026', 'salt', 32);
@@ -96,6 +97,7 @@ ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' |
 ipcMain.on('update-preferences', (_event, prefs) => {
   trackSystemApps = prefs.trackSystemApps ?? false;
   trackSelf = prefs.trackSelf ?? false;
+  hiddenApps = prefs.hiddenApps ?? [];
 });
 
 ipcMain.handle('save-csv', async (_event, csvContent: string) => {
@@ -326,6 +328,7 @@ async function startTracking(mainWindow: BrowserWindow) {
           let shouldTrack = true;
           if (!trackSystemApps && isSystemApp) shouldTrack = false;
           if (!trackSelf && isSelfApp) shouldTrack = false;
+          if (hiddenApps.includes(displayAppName)) shouldTrack = false;
 
           if (shouldTrack) {
             appUsage[displayAppName] = (appUsage[displayAppName] || 0) + timeDiff;

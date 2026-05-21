@@ -98,7 +98,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
     };
 
     return (
-        <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+        <div className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
             <div className="stagger-item shrink-0 mb-2 sm:mb-4" style={{ animationDelay: '0.05s' }}>
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
                     Zeitra Controls

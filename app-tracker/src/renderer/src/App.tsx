@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square } from './components/Icons'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { Switch } from './switch'
@@ -51,6 +51,8 @@ const App: React.FC = () => {
   const [themePref, setThemePref] = useState<'system' | 'light' | 'dark'>(() => (localStorage.getItem('themePref') as 'system' | 'light' | 'dark') || 'system');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('dark');
   const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(() => parseInt(localStorage.getItem('dailyFocusGoal') || '4', 10));
+  const [hiddenApps, setHiddenApps] = useState<string[]>(() => JSON.parse(localStorage.getItem('hiddenApps') || '[]'));
+  const [showIgnoredApps, setShowIgnoredApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('showIgnoredApps') || 'false'));
 
   const effectiveTheme = themePref === 'system' ? systemTheme : themePref;
 
@@ -58,6 +60,8 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('trackSystemApps', JSON.stringify(trackSystemApps)); }, [trackSystemApps]);
   useEffect(() => { localStorage.setItem('themePref', themePref); }, [themePref]);
   useEffect(() => { localStorage.setItem('dailyFocusGoal', dailyFocusGoal.toString()); }, [dailyFocusGoal]);
+  useEffect(() => { localStorage.setItem('hiddenApps', JSON.stringify(hiddenApps)); }, [hiddenApps]);
+  useEffect(() => { localStorage.setItem('showIgnoredApps', JSON.stringify(showIgnoredApps)); }, [showIgnoredApps]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -86,9 +90,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (window.api && window.api.updatePreferences) {
-      window.api.updatePreferences({ trackSelf, trackSystemApps });
+      window.api.updatePreferences({ trackSelf, trackSystemApps, hiddenApps });
     }
-  }, [trackSelf, trackSystemApps]);
+  }, [trackSelf, trackSystemApps, hiddenApps]);
 
   const showToast = (title: string, message: string) => {
     toast.success(title, { description: message });
@@ -108,7 +112,19 @@ const App: React.FC = () => {
     setContextMenu(null);
   };
 
+  const handleHideApp = () => {
+    if (contextMenu) {
+      setHiddenApps(prev => {
+        if (!prev.includes(contextMenu.appName)) return [...prev, contextMenu.appName];
+        return prev;
+      });
+      showToast('App Hidden', `${contextMenu.appName} will no longer be tracked globally.`);
+    }
+    setContextMenu(null);
+  };
+
   const isAppValid = (appName: string) => {
+    if (hiddenApps.includes(appName) && !showIgnoredApps) return false;
     const lower = appName.toLowerCase();
     
     if (!trackSelf && (lower.includes('zeitra') || lower.includes('forgepulse') || lower.includes('electron') || lower.includes('app-tracker'))) {
@@ -135,7 +151,7 @@ const App: React.FC = () => {
     if (activeApp?.name && isAppValid(activeApp.name)) {
       setLastActiveValidApp(activeApp.name);
     }
-  }, [activeApp?.name, trackSelf, trackSystemApps]);
+  }, [activeApp?.name, trackSelf, trackSystemApps, hiddenApps]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -312,24 +328,37 @@ const App: React.FC = () => {
     const val = payload?.value || '';
     const iconUrl = activeApp?.appIcons?.[val];
     const isActive = lastActiveValidApp === val;
+    const isIgnored = hiddenApps.includes(val);
     const text = val.length > 18 ? val.substring(0, 15) + '...' : val;
     return (
       <g transform={`translate(${x},${y})`} className="cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, val)}>
-        <text x="-40" y="4" textAnchor="end" fill={isActive ? "rgb(var(--a1))" : "var(--text)"} opacity={isActive ? "1" : "0.8"} fontSize="13" fontWeight="bold">
+        <text x="-40" y="4" textAnchor="end" fill={isActive ? "rgb(var(--a1))" : (isIgnored ? "var(--panel-border)" : "var(--text)")} opacity={isActive ? "1" : (isIgnored ? "0.4" : "0.8")} fontSize="13" fontWeight="bold" textDecoration={isIgnored ? "line-through" : "none"}>
           {text}
         </text>
         {iconUrl && (
-          <image href={iconUrl} xlinkHref={iconUrl} x="-30" y="-12" width="20" height="20" />
-        )}
-        {isActive && (
-          <g transform="translate(-6, -2)">
-            <circle cx="0" cy="0" r="4" fill="rgba(var(--a1), 0.3)">
-              <animate attributeName="r" values="3;7;3" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="0" cy="0" r="3" fill="rgb(var(--a1))" />
+          <g>
+            <image href={iconUrl} xlinkHref={iconUrl} x="-30" y="-12" width="20" height="20" opacity={isIgnored ? "0.4" : "1"} />
+            {isIgnored && (
+              <>
+                <circle cx="-20" cy="-2" r="7" fill="var(--panel-bg)" stroke="#ef4444" strokeWidth="1.5" />
+                <path d="M-22,-4 L-18,0 M-18,-4 L-22,0" stroke="#ef4444" strokeWidth="1.5" />
+              </>
+            )}
           </g>
         )}
+      </g>
+    );
+  };
+
+  const CustomXAxisTick = ({ x, y, payload }: any) => {
+    const val = payload?.value || '';
+    const isIgnored = hiddenApps.includes(val);
+    const text = val.length > 12 ? val.substring(0, 12) + '...' : val;
+    return (
+      <g transform={`translate(${x},${y})`} className="cursor-default">
+        <text x={0} y={0} dy={16} textAnchor="middle" fill={isIgnored ? "var(--panel-border)" : "var(--text)"} opacity={isIgnored ? "0.4" : "0.6"} fontSize="12" fontWeight="bold" textDecoration={isIgnored ? "line-through" : "none"}>
+          {text}
+        </text>
       </g>
     );
   };
@@ -406,7 +435,7 @@ const App: React.FC = () => {
       });
 
     return (
-      <div ref={dashboardRef} className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+      <div ref={dashboardRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
         <div className="stagger-item mb-2 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4" style={{ animationDelay: '0.05s' }}>
           <div>
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
@@ -426,7 +455,7 @@ const App: React.FC = () => {
               )}
               {lastActiveValidApp === displayAppName && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 shrink-0" title="Currently Active">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
                 </span>
               )}
@@ -473,10 +502,11 @@ const App: React.FC = () => {
                 </Select>
               </div>
             </div>
-            <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 w-full min-h-0 min-w-0 pr-2 sm:pr-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
               {filteredChartData.length > 0 ? (
-                <div style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
-                  <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full relative" style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
+              <div className="absolute inset-0">
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
                       <XAxis type="number" hide />
                       <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
@@ -496,6 +526,7 @@ const App: React.FC = () => {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
+              </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
@@ -508,7 +539,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col items-center justify-center relative overflow-hidden hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
-            {focusSessionActive && <div className="absolute inset-0 bg-gradient-to-b from-[rgba(var(--a1),0.1)] to-transparent animate-pulse pointer-events-none"></div>}
             
             <div className="flex items-center gap-2 mb-6 z-10">
               <Flame className={`w-6 h-6 sm:w-7 sm:h-7 ${focusSessionActive ? 'text-[rgb(var(--a1))]' : 'text-[var(--text)] opacity-50'}`} />
@@ -559,7 +589,7 @@ const App: React.FC = () => {
   const renderAnalytics = () => {
     if (isAnalyticsLoading) {
       return (
-        <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4 animate-in fade-in duration-300">
+        <div className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10 animate-in fade-in duration-300">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4 mb-2">
             <div className="flex flex-col gap-2 sm:gap-3">
               <div className="h-10 sm:h-14 w-64 sm:w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
@@ -633,7 +663,7 @@ const App: React.FC = () => {
     };
 
     return (
-      <div ref={analyticsRef} className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+      <div ref={analyticsRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
         <div className="stagger-item flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4 mb-2" style={{ animationDelay: '0.05s' }}>
           <div>
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
@@ -726,9 +756,10 @@ const App: React.FC = () => {
 
         <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[300px] sm:min-h-[350px]" style={{ animationDelay: '0.15s' }}>
           <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] mb-4 sm:mb-6 tracking-wide">Screen Time Trends</h2>
-          <div className="flex-1 w-full min-h-0 min-w-0">
+          <div className="flex-1 w-full min-h-[250px] min-w-0 relative">
             {realTrendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <div className="absolute inset-0">
+                <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
@@ -737,7 +768,7 @@ const App: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
-                  <XAxis dataKey="name" tickFormatter={(val) => val.length > 12 ? val.substring(0, 12) + '...' : val} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
+                  <XAxis dataKey="name" stroke="var(--panel-border)" tick={<CustomXAxisTick />} tickLine={false} axisLine={false} dy={10} />
                   <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
                   <Tooltip
                     cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
@@ -757,6 +788,7 @@ const App: React.FC = () => {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              </div>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
                 <NoData className="w-64 h-64 opacity-40" />
@@ -783,26 +815,33 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 max-h-[400px]">
               {filteredAnalyticsApps.map((app) => {
                 const isActive = lastActiveValidApp === app.name;
+                const isIgnored = hiddenApps.includes(app.name);
                 return (
-                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-3xl border p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 sm:gap-5 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'}`}>
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
+                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-3xl border p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 sm:gap-5 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'} ${isIgnored ? 'opacity-60 grayscale' : ''}`}>
+                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive && !isIgnored ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
                     {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
-                    {isActive && (
+                    {isActive && !isIgnored && (
                       <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 shrink-0" title="Currently Active">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
                       </span>
                     )}
+                    {isIgnored && (
+                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--panel-bg)] rounded-full border border-red-500 flex items-center justify-center">
+                        <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
+                      </div>
+                    )}
                   </div>
                   <div className="overflow-hidden">
-                    <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate flex items-center gap-2">
+                    <p className={`text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate flex items-center gap-2 ${isIgnored ? 'line-through' : ''}`}>
                       {app.name}
-                      {isActive && <span className="text-[9px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 tracking-wider">ACTIVE</span>}
+                      {isActive && !isIgnored && <span className="text-[9px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 tracking-wider">ACTIVE</span>}
+                      {isIgnored && <span className="text-[9px] text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 tracking-wider">IGNORED</span>}
                     </p>
-                    <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
+                    <p className={`text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate ${isIgnored ? 'opacity-70' : ''}`}>{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
                   </div>
                 </div>
               )})}
@@ -820,8 +859,10 @@ const App: React.FC = () => {
             <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide mb-4 text-center">Category Breakdown</h3>
             <div className="flex-1 w-full min-h-[180px] relative">
               {pieData.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height="100%">
+              <div className="flex-1 w-full h-full flex flex-col">
+                <div className="flex-1 w-full relative min-h-[140px]">
+                  <div className="absolute inset-0">
+                    <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
                         {pieData.map((entry, index) => (
@@ -848,7 +889,9 @@ const App: React.FC = () => {
                       />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-2">
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-4 shrink-0">
                     {pieData.map((entry, index) => (
                       <div key={entry.name} className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
@@ -856,7 +899,7 @@ const App: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </>
+              </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
                   <NoData className="w-32 h-32 opacity-40" />
@@ -871,7 +914,7 @@ const App: React.FC = () => {
   };
 
   const renderSettings = () => (
-    <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+    <div className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
       <div className="stagger-item shrink-0 mb-2 sm:mb-4" style={{ animationDelay: '0.05s' }}>
         <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
           Application Preferences
@@ -989,6 +1032,27 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4 mt-4">
+              <div>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Hidden Applications</h4>
+                <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">You have hidden {hiddenApps.length} application(s) from tracking.</p>
+              </div>
+              <div className="flex gap-3 mt-2 lg:mt-0 w-full lg:w-auto shrink-0 flex-wrap items-center">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-[var(--text)] opacity-70 hover:opacity-100 transition-opacity mr-2">
+                  <Switch checked={showIgnoredApps} onCheckedChange={setShowIgnoredApps} />
+                  Show in Charts
+                </label>
+                <button 
+                  onClick={() => { setHiddenApps([]); showToast('Hidden Apps Reset', 'All hidden applications are now being tracked again.'); }}
+                  disabled={hiddenApps.length === 0}
+                  className="bg-[var(--panel-bg)] disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] text-[var(--text)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-inner flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                  RESET HIDDEN
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-4 pb-10">
@@ -1061,8 +1125,8 @@ const App: React.FC = () => {
         </div>
 
         {/* Dashboard Skeleton */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto relative z-10 w-full h-full">
-          <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4 animate-in fade-in duration-300">
+        <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-scroll overflow-x-hidden custom-scrollbar relative z-10 w-full h-full">
+          <div className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10 animate-in fade-in duration-300">
             <div className="flex flex-col gap-2 sm:gap-3 mb-2">
               <div className="h-10 sm:h-14 w-64 sm:w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
               <div className="h-4 sm:h-6 w-48 sm:w-64 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
@@ -1093,14 +1157,15 @@ const App: React.FC = () => {
 
       <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-[20px_0_40px_rgba(0,0,0,0.1)] print:hidden transition-all duration-300">
         <div className="flex flex-col gap-8 md:gap-10">
-          <div className="px-0 md:px-2 flex justify-center md:justify-start">
+          <div className="px-0 md:px-2 flex justify-center md:justify-start stagger-item" style={{ animationDelay: '0.0s' }}>
             <ZeitraLogo className="w-10 md:w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)] transition-all duration-300" />
           </div>
 
           <nav className="flex flex-col gap-2 md:gap-3">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'dashboard' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a1))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              className={`stagger-item flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'dashboard' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a1))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              style={{ animationDelay: '0.05s' }}
             >
               <LayoutDashboard className={`w-6 h-6 md:w-5 md:h-5 shrink-0 ${activeTab === 'dashboard' ? 'text-[rgb(var(--a1))] drop-shadow-md' : ''}`} />
               <span className="hidden md:block">Dashboard</span>
@@ -1108,7 +1173,8 @@ const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'analytics' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a1))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              className={`stagger-item flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'analytics' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a1))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              style={{ animationDelay: '0.1s' }}
             >
               <LineChart className={`w-6 h-6 md:w-5 md:h-5 shrink-0 ${activeTab === 'analytics' ? 'text-[rgb(var(--a1))] drop-shadow-md' : ''}`} />
               <span className="hidden md:block">Analytics</span>
@@ -1116,7 +1182,8 @@ const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('controls')}
-              className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'controls' ? 'bg-[rgba(var(--a2),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a2))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              className={`stagger-item flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'controls' ? 'bg-[rgba(var(--a2),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a2))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              style={{ animationDelay: '0.15s' }}
             >
               <ShieldAlert className={`w-6 h-6 md:w-5 md:h-5 shrink-0 ${activeTab === 'controls' ? 'text-[rgb(var(--a2))] drop-shadow-md' : ''}`} />
               <span className="hidden md:block">Controls</span>
@@ -1127,20 +1194,21 @@ const App: React.FC = () => {
         <div className="flex flex-col gap-2 md:gap-4">
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-3 rounded-xl transition-all duration-300 cursor-pointer text-sm font-bold tracking-wide ${activeTab === 'settings' ? 'bg-[var(--panel-bg)] text-[var(--text)] md:border-l-4 border-[var(--text)] md:pl-4 shadow-md shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+            className={`stagger-item flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-3 rounded-xl transition-all duration-300 cursor-pointer text-sm font-bold tracking-wide ${activeTab === 'settings' ? 'bg-[var(--panel-bg)] text-[var(--text)] md:border-l-4 border-[var(--text)] md:pl-4 shadow-md shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+            style={{ animationDelay: '0.2s' }}
           >
             <Settings className="w-6 h-6 md:w-5 md:h-5 shrink-0" />
             <span className="hidden md:block">Settings</span>
           </button>
 
-          <div className="flex items-center justify-center md:justify-start gap-0 md:gap-4 bg-transparent md:bg-[var(--bg)] border-none md:border border-[var(--panel-border)] rounded-2xl p-2 md:p-4 shadow-none md:shadow-inner transition-all duration-300">
-            <div className="w-3 h-3 md:w-2.5 md:h-2.5 rounded-full bg-[rgb(var(--a1))] animate-pulse shadow-[0_0_8px_rgb(var(--a1))] shrink-0"></div>
+          <div className="stagger-item flex items-center justify-center md:justify-start gap-0 md:gap-4 bg-transparent md:bg-[var(--bg)] border-none md:border border-[var(--panel-border)] rounded-2xl p-2 md:p-4 shadow-none md:shadow-inner transition-all duration-300" style={{ animationDelay: '0.25s' }}>
+            <div className="w-3 h-3 md:w-2.5 md:h-2.5 rounded-full bg-[rgb(var(--a1))] shadow-[0_0_8px_rgb(var(--a1))] shrink-0"></div>
             <span className="hidden md:block text-xs text-[var(--text)] opacity-80 font-bold tracking-widest uppercase truncate">Engine Live</span>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto relative z-10 w-full h-full print:p-0 print:overflow-visible">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-scroll overflow-x-hidden custom-scrollbar relative z-10 w-full h-full print:p-0 print:overflow-visible">
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'analytics' && renderAnalytics()}
         {activeTab === 'settings' && renderSettings()}
@@ -1167,7 +1235,7 @@ const App: React.FC = () => {
       <Toaster theme={effectiveTheme as any} toastOptions={{ style: { background: 'var(--panel-bg)', color: 'var(--text)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }, className: 'font-sans font-medium' }} />
 
       {/* Custom Right-Click Context Menu */}
-      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} />
+      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} onHideApp={handleHideApp} />
 
       {/* Confirmation Modal */}
       <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
@@ -1203,18 +1271,18 @@ const App: React.FC = () => {
         }
         
         /* Custom Scrollbar for the application and target containers */
-        ::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
+        .custom-scrollbar::-webkit-scrollbar {
           width: 8px;
           height: 8px;
         }
-        ::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track {
+        .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
-        ::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb {
+        .custom-scrollbar::-webkit-scrollbar-thumb {
           background: rgba(150, 150, 150, 0.25);
           border-radius: 10px;
         }
-        ::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(150, 150, 150, 0.45);
         }
         

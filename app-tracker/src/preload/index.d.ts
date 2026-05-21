@@ -10,7 +10,7 @@ declare global {
       toggleFocusMode: (enabled: boolean) => void
       updateBlockList: (rules: Record<string, BlockRule>) => void
       // NEW: Preference Sync Channel
-      updatePreferences: (prefs: { trackSystemApps: boolean, trackSelf: boolean }) => void
+      updatePreferences: (prefs: { trackSystemApps: boolean, trackSelf: boolean, hiddenApps: string[] }) => void
     }
   }
 }

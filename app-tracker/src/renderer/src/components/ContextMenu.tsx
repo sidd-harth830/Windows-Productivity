@@ -1,13 +1,14 @@
 import React from 'react'
-import { RefreshCw } from './Icons'
+import { RefreshCw, EyeOff } from './Icons'
 
 interface ContextMenuProps {
     contextMenu: { x: number; y: number; appName: string } | null;
     onClose: () => void;
     onRefreshIcon: () => void;
+    onHideApp: () => void;
 }
 
-const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefreshIcon }) => {
+const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefreshIcon, onHideApp }) => {
     if (!contextMenu) return null;
 
     return (
@@ -23,6 +24,10 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefre
                 <button onClick={onRefreshIcon} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] hover:text-[rgb(var(--a1))] rounded-lg transition-colors text-left">
                     <RefreshCw className="w-4 h-4" />
                     Refresh Icon
+                </button>
+                <button onClick={onHideApp} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-400 hover:bg-[rgba(239,68,68,0.1)] rounded-lg transition-colors text-left mt-1">
+                    <EyeOff className="w-4 h-4" />
+                    Hide App
                 </button>
             </div>
         </>
