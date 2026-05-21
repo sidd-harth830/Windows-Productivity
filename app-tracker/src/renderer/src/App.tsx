@@ -468,17 +468,28 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
-              {filteredAnalyticsApps.map((app) => (
-                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className="bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg hover:border-[rgba(var(--a1),0.3)] transition-colors cursor-context-menu">
-                  <div className="w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[var(--panel-border)] flex items-center justify-center p-2.5 shadow-inner shrink-0">
+              {filteredAnalyticsApps.map((app) => {
+                const isActive = activeApp?.name === app.name;
+                return (
+                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-xl border p-6 rounded-3xl flex items-center gap-5 shadow-lg transition-colors cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'}`}>
+                  <div className={`w-14 h-14 rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
                     {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
+                    {isActive && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 shrink-0" title="Currently Active">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
+                      </span>
+                    )}
                   </div>
                   <div className="overflow-hidden">
-                    <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate">{app.name}</p>
+                    <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate flex items-center gap-2">
+                      {app.name}
+                      {isActive && <span className="text-[9px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 tracking-wider">ACTIVE</span>}
+                    </p>
                     <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
                   </div>
                 </div>
-              ))}
+              )})}
               {filteredAnalyticsApps.length === 0 && (
                 <div className="col-span-1 md:col-span-2 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
                    <span className="text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">Waiting for logs...</span>
