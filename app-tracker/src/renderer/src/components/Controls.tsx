@@ -133,11 +133,19 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 className="h-14 border-2 rounded-xl px-5 text-base font-bold" required
                             />
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-transparent border-2 border-[rgba(var(--a1),0.5)] focus-within:bg-[var(--panel-bg)] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.2)] transition-all rounded-xl px-4 py-2 w-1/2">
-                                    <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value))} className="w-full bg-transparent text-[rgb(var(--a1))] text-center font-black text-lg focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)]" required />
-                                    <span className="text-[var(--text)] opacity-50 font-bold pr-1">MIN</span>
+                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1.5 w-1/2">
+                                    <button type="button" onClick={() => setOfflineMinutes(Math.max(1, offlineMinutes - 5))} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
+                                        -
+                                    </button>
+                                    <div className="flex items-center justify-center flex-1 gap-1">
+                                        <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value) || 0)} className="w-12 bg-transparent text-[rgb(var(--a1))] text-right font-black text-xl focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)] [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]" required />
+                                        <span className="text-[var(--text)] opacity-50 font-bold text-xs mt-1">m</span>
+                                    </div>
+                                    <button type="button" onClick={() => setOfflineMinutes(offlineMinutes + 5)} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
+                                        +
+                                    </button>
                                 </div>
-                                <button type="submit" className="w-1/2 bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-4 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
+                                <button type="submit" className="w-1/2 h-[56px] bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-0 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
                                     ADD TIME
                                 </button>
                             </div>
@@ -192,7 +200,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                     className="h-14 border-2 rounded-xl px-5 text-base font-bold"
                                 />
                                 {showSuggestions && inputValue.length > 0 && filteredSuggestions.length > 0 && (
-                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--panel-bg)] backdrop-blur-2xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">
+                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">
                                         {filteredSuggestions.map(app => (
                                             <button
                                                 key={app}
@@ -212,13 +220,21 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </div>
 
                             {ruleType === 'timer' && (
-                                <div className="flex items-center gap-2 bg-transparent border-2 border-[rgba(var(--a1),0.5)] focus-within:bg-[var(--panel-bg)] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.2)] transition-all rounded-xl px-4 py-2">
-                                    <input type="number" min="1" max="1440" value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} className="w-14 bg-transparent text-[rgb(var(--a1))] text-center font-black text-lg focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)]" />
-                                    <span className="text-[var(--text)] opacity-50 font-bold pr-1">MIN</span>
+                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1 min-w-[140px]">
+                                    <button type="button" onClick={() => setTimeLimitMinutes(Math.max(1, timeLimitMinutes - 15))} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
+                                        -
+                                    </button>
+                                    <div className="flex items-center justify-center flex-1 gap-1">
+                                        <input type="number" min="1" max="1440" value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value) || 0)} className="w-10 bg-transparent text-[rgb(var(--a1))] text-right font-black text-xl focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)] [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]" required />
+                                        <span className="text-[var(--text)] opacity-50 font-bold text-xs mt-1">m</span>
+                                    </div>
+                                    <button type="button" onClick={() => setTimeLimitMinutes(Math.min(1440, timeLimitMinutes + 15))} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
+                                        +
+                                    </button>
                                 </div>
                             )}
 
-                            <button type="submit" className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-4 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
+                            <button type="submit" className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 h-[56px] rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
                                 ADD RULE
                             </button>
                         </form>

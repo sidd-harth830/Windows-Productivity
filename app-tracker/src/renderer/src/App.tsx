@@ -253,7 +253,7 @@ const App: React.FC = () => {
     if (active && payload && payload.length) {
       const iconUrl = activeApp?.appIcons?.[label];
       return (
-        <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-2xl flex items-center gap-4">
+        <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] flex items-center gap-4">
           <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
             {iconUrl ? <img src={iconUrl} alt={label} className="max-w-full max-h-full object-contain drop-shadow-md" /> : <GenericAppIcon />}
           </div>
@@ -276,7 +276,7 @@ const App: React.FC = () => {
     const text = val.length > 18 ? val.substring(0, 15) + '...' : val;
     return (
       <g transform={`translate(${x},${y})`} className="cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, val)}>
-        <text x="-40" y="4" textAnchor="end" fill={isActive ? "rgb(16, 185, 129)" : "var(--text)"} opacity={isActive ? "1" : "0.8"} fontSize="13" fontWeight="bold">
+        <text x="-40" y="4" textAnchor="end" fill={isActive ? "rgb(var(--a1))" : "var(--text)"} opacity={isActive ? "1" : "0.8"} fontSize="13" fontWeight="bold">
           {text}
         </text>
         {iconUrl && (
@@ -284,11 +284,11 @@ const App: React.FC = () => {
         )}
         {isActive && (
           <g transform="translate(-6, -2)">
-            <circle cx="0" cy="0" r="4" fill="rgba(16, 185, 129, 0.3)">
+            <circle cx="0" cy="0" r="4" fill="rgba(var(--a1), 0.3)">
               <animate attributeName="r" values="3;7;3" dur="2s" repeatCount="indefinite" />
               <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
             </circle>
-            <circle cx="0" cy="0" r="3" fill="rgb(16, 185, 129)" />
+            <circle cx="0" cy="0" r="3" fill="rgb(var(--a1))" />
           </g>
         )}
       </g>
@@ -987,7 +987,7 @@ const App: React.FC = () => {
             setIsFocusMode={setIsFocusMode}
             blockList={blockList}
             setBlockList={setBlockList}
-            availableApps={activeApp ? Object.keys(activeApp.allUsage).filter(appName => isAppValid(appName) && activeApp.allUsage[appName] >= 60) : []}
+            availableApps={activeApp ? Object.keys(activeApp.appIcons).filter(appName => isAppValid(appName)) : []}
             allUsage={activeApp ? activeApp.allUsage : {}}
             appIcons={activeApp ? activeApp.appIcons : {}}
             onContextMenu={handleContextMenu}
