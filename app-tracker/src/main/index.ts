@@ -161,6 +161,25 @@ ipcMain.handle('refresh-app-icon', async (_event, appName: string) => {
   } catch (e) { return false; }
 });
 
+ipcMain.handle('clear-usage-data', async () => {
+  try {
+    appUsage = {};
+    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(appUsage)));
+    lastUiUpdate = 0; // Trigger an immediate UI refresh
+    
+    BrowserWindow.getAllWindows().forEach(win => {
+      win.webContents.send('window-update', {
+        name: lastApp || 'Desktop',
+        title: '',
+        focusTime: 0,
+        allUsage: { ...appUsage },
+        appIcons: appIcons
+      });
+    });
+    return true;
+  } catch (e) { return false; }
+});
+
 function cleanAppName(rawName: string): string {
   let clean = rawName.replace(/\.exe$/i, '').trim();
   if (clean.toLowerCase() === 'code') return 'VS Code';

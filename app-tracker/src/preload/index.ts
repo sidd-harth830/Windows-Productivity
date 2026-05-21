@@ -19,7 +19,10 @@ const api = {
   removeAppUsage: (appName: string) => ipcRenderer.invoke('remove-app-usage', appName),
 
   // NEW: Refresh App Icon
-  refreshAppIcon: (appName: string) => ipcRenderer.invoke('refresh-app-icon', appName)
+  refreshAppIcon: (appName: string) => ipcRenderer.invoke('refresh-app-icon', appName),
+
+  // NEW: Clear Usage Data
+  clearUsageData: () => ipcRenderer.invoke('clear-usage-data')
 }
 
 if (process.contextIsolated) {

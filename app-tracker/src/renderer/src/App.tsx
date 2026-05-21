@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid } from 'recharts'
 import Controls from './components/Controls'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, RefreshCw, Check } from './components/Icons'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, RefreshCw, Check, X } from './components/Icons'
 
 export const THEMES = {
   dark: { bg: '#09090B', text: '#F8FAFC', a1: '99, 102, 241', a2: '168, 85, 247', panelBg: 'rgba(255,255,255,0.03)', panelBorder: 'rgba(255,255,255,0.08)' },
@@ -28,8 +28,6 @@ const App: React.FC = () => {
   const analyticsRef = useRef<HTMLDivElement>(null);
 
   const [dashboardSearch, setDashboardSearch] = useState<string>('');
-  // FIX: Moved timeframe state up to the root level!
-  const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
 
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
@@ -113,6 +111,17 @@ const App: React.FC = () => {
       const success = await (window.api as any).saveCsv(csvContent);
       if (success) {
         showToast('CSV Exported', 'Your data was successfully saved.');
+      }
+    }
+  };
+
+  const handleClearData = async () => {
+    if (window.confirm("Are you sure you want to completely clear all recorded usage data? This action cannot be undone.")) {
+      if (window.api && (window.api as any).clearUsageData) {
+        const success = await (window.api as any).clearUsageData();
+        if (success) {
+          showToast('Data Cleared', 'All usage history has been permanently deleted.');
+        }
       }
     }
   };
@@ -259,20 +268,11 @@ const App: React.FC = () => {
   };
 
   const renderAnalytics = () => {
-    // REAL DATA SYNTHESIS: Distribute your actual total tracked time proportionally
-    const multiplier = timeframe === 'daily' ? 1 : timeframe === 'weekly' ? 7 : 30;
-    const todayTotal = chartData.reduce((acc, curr) => acc + curr.time, 0);
-
-    // We map your actual total time across the curve so the graph matches your usage reality!
-    const mockTrend = [
-      { day: 'Mon', time: Math.floor((todayTotal * 0.15) * multiplier) },
-      { day: 'Tue', time: Math.floor((todayTotal * 0.20) * multiplier) },
-      { day: 'Wed', time: Math.floor((todayTotal * 0.10) * multiplier) },
-      { day: 'Thu', time: Math.floor((todayTotal * 0.25) * multiplier) },
-      { day: 'Fri', time: Math.floor((todayTotal * 0.10) * multiplier) },
-      { day: 'Sat', time: Math.floor((todayTotal * 0.05) * multiplier) },
-      { day: 'Sun', time: Math.floor((todayTotal * 0.15) * multiplier) }
-    ];
+    // Visualizing the actual top application times in the trend chart
+    const realTrendData = chartData.slice(0, 7).map(app => ({
+      name: app.name.length > 12 ? app.name.substring(0, 12) + '...' : app.name,
+      time: app.time
+    }));
 
     return (
       <div ref={analyticsRef} className="flex flex-col h-full gap-8 max-w-6xl mx-auto w-full pb-4 p-4 rounded-xl">
@@ -283,21 +283,13 @@ const App: React.FC = () => {
             </h1>
             <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
-
-          <div className="flex items-center gap-4 print:hidden">
-            <div className="flex gap-2 p-1.5 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
-              <button onClick={() => setTimeframe('daily')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'daily' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>Daily</button>
-              <button onClick={() => setTimeframe('weekly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'weekly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>Weekly</button>
-              <button onClick={() => setTimeframe('monthly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'monthly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>Monthly</button>
-            </div>
-          </div>
         </div>
 
         <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[350px]" style={{ animationDelay: '0.15s' }}>
           <h2 className="text-xl font-bold text-[var(--text)] mb-6 tracking-wide">Screen Time Trends</h2>
           <div className="flex-1 w-full min-h-0 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mockTrend} margin={{ top: 10, right: 10, left: 25, bottom: 0 }}>
+              <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
@@ -305,7 +297,7 @@ const App: React.FC = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
-                <XAxis dataKey="day" stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
+                <XAxis dataKey="name" stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
                 <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
                 <Tooltip
                   cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
@@ -426,6 +418,26 @@ const App: React.FC = () => {
                 <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t} Mode</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide text-red-400">Danger Zone</h3>
+
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-red-500/5 p-5 rounded-2xl border border-red-500/20 shadow-inner gap-4">
+            <div>
+              <h4 className="text-red-400 font-bold text-base tracking-wide">Clear All Usage Data</h4>
+              <p className="text-sm text-red-400/70 mt-1 max-w-lg font-medium">Permanently delete all recorded application history and offline logs. This cannot be undone.</p>
+            </div>
+            <div className="flex gap-3 mt-3 xl:mt-0">
+              <button 
+                onClick={handleClearData}
+                className="bg-red-500 hover:brightness-125 text-white px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center gap-2"
+              >
+                <X className="w-5 h-5" strokeWidth={3} />
+                CLEAR DATA
+              </button>
+            </div>
           </div>
         </div>
 
