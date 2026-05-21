@@ -29,6 +29,8 @@ const App: React.FC = () => {
 
   const [dashboardSearch, setDashboardSearch] = useState<string>('');
   const [sortMode, setSortMode] = useState<'duration' | 'alphabetical'>('duration');
+  const [historyData, setHistoryData] = useState<Record<string, Record<string, number>>>({});
+  const [analyticsDate, setAnalyticsDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
@@ -46,6 +48,14 @@ const App: React.FC = () => {
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'analytics' && window.api && (window.api as any).getHistory) {
+      (window.api as any).getHistory().then((data: any) => {
+        setHistoryData(data);
+      });
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (window.api && window.api.updatePreferences) {
@@ -128,12 +138,22 @@ const App: React.FC = () => {
   };
 
   // Get ALL apps without .slice
-  const chartData = activeApp
+  const dashboardData = activeApp
     ? Object.entries(activeApp.allUsage)
       .filter(([name]) => isAppValid(name))
       .map(([name, time]) => ({ name, time }))
       .sort((a, b) => b.time - a.time)
     : [];
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const analyticsUsage = analyticsDate === todayStr 
+    ? (activeApp ? activeApp.allUsage : {})
+    : (historyData[analyticsDate] || {});
+
+  const analyticsChartData = Object.entries(analyticsUsage)
+      .filter(([name]) => isAppValid(name))
+      .map(([name, time]) => ({ name, time: time as number }))
+      .sort((a, b) => b.time - a.time);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -182,11 +202,11 @@ const App: React.FC = () => {
   };
 
   const renderDashboard = () => {
-    const mostUsedApp = chartData.length > 0 ? chartData[0] : null;
+    const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
     const displayTime = mostUsedApp ? formatTime(mostUsedApp.time) : "0m";
 
-    const filteredChartData = chartData
+    const filteredChartData = dashboardData
       .filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()))
       .sort((a, b) => {
         if (sortMode === 'duration') return b.time - a.time;
@@ -305,7 +325,7 @@ const App: React.FC = () => {
 
   const renderAnalytics = () => {
     // Visualizing the actual top application times in the trend chart
-    const realTrendData = chartData.slice(0, 7).map(app => ({
+    const realTrendData = analyticsChartData.slice(0, 7).map(app => ({
       name: app.name.length > 12 ? app.name.substring(0, 12) + '...' : app.name,
       time: app.time
     }));
@@ -319,56 +339,79 @@ const App: React.FC = () => {
             </h1>
             <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[var(--text)] opacity-60 text-sm font-bold">Select Date:</span>
+            <input 
+              type="date"
+              value={analyticsDate}
+              max={todayStr}
+              onChange={(e) => setAnalyticsDate(e.target.value)}
+              style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
+              className="bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner custom-date-picker cursor-pointer"
+            />
+          </div>
         </div>
 
         <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[350px]" style={{ animationDelay: '0.15s' }}>
           <h2 className="text-xl font-bold text-[var(--text)] mb-6 tracking-wide">Screen Time Trends</h2>
           <div className="flex-1 w-full min-h-0 min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 25, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="rgb(var(--a1))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
-                <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
-                  contentStyle={{ backgroundColor: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '12px', color: 'var(--text)', fontWeight: 'bold' }}
-                  formatter={(value: number) => [formatTime(value), 'Total Time']}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="time" 
-                  stroke="rgb(var(--a1))" 
-                  strokeWidth={4} 
-                  fillOpacity={1} 
-                  fill="url(#colorTime)" 
-                  isAnimationActive={true}
-                  animationDuration={1200}
-                  animationEasing="ease-out"
-                  activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }} 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {realTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
+                      <stop offset="95%" stopColor="rgb(var(--a1))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
+                  <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
+                    contentStyle={{ backgroundColor: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '12px', color: 'var(--text)', fontWeight: 'bold' }}
+                    formatter={(value: number) => [formatTime(value), 'Total Time']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="time" 
+                    stroke="rgb(var(--a1))" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorTime)" 
+                    isAnimationActive={true}
+                    animationDuration={1200}
+                    animationEasing="ease-out"
+                    activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }} 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text)] opacity-50">
+                <Monitor className="w-12 h-12 mb-4 opacity-20" />
+                <p className="font-bold tracking-widest uppercase text-sm">No usage data for this date</p>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="stagger-item grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
-          {chartData.slice(0, 3).map((app) => (
+          {analyticsChartData.slice(0, 3).map((app) => (
             <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className="bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg hover:border-[rgba(var(--a1),0.3)] transition-colors cursor-context-menu">
               <div className="w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[var(--panel-border)] flex items-center justify-center p-2.5 shadow-inner">
                 {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
               </div>
               <div>
                 <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest">{app.name}</p>
-                <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">today</span></p>
+                <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsDate === todayStr ? 'today' : 'total'}</span></p>
               </div>
             </div>
           ))}
+          {analyticsChartData.length === 0 && (
+            <div className="col-span-1 md:col-span-3 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
+               <span className="text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">Waiting for logs...</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -643,6 +686,15 @@ const App: React.FC = () => {
         }
         ::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(150, 150, 150, 0.45);
+        }
+        
+        .custom-date-picker::-webkit-calendar-picker-indicator {
+          cursor: pointer;
+          opacity: 0.6;
+          transition: opacity 0.2s;
+        }
+        .custom-date-picker::-webkit-calendar-picker-indicator:hover {
+          opacity: 1;
         }
       `}</style>
 

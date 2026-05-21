@@ -57,8 +57,30 @@ function safeReadData(path: string): any {
   try { return JSON.parse(decryptData(raw)); } catch { try { return JSON.parse(raw); } catch { return {}; } }
 }
 
-appUsage = safeReadData(dataPath);
+let allUsageData = safeReadData(dataPath);
+let todayStr = new Date().toISOString().split('T')[0];
+
+const isOldFormat = Object.keys(allUsageData).length > 0 && Object.keys(allUsageData).some(key => !key.match(/^\d{4}-\d{2}-\d{2}$/));
+if (isOldFormat) {
+  const oldData = { ...allUsageData };
+  allUsageData = { [todayStr]: oldData };
+}
+if (!allUsageData[todayStr]) {
+  allUsageData[todayStr] = {};
+}
+appUsage = allUsageData[todayStr];
+
 appPaths = safeReadData(pathsDataPath);
+
+function checkDateRoll() {
+  const currentStr = new Date().toISOString().split('T')[0];
+  if (currentStr !== todayStr) {
+    todayStr = currentStr;
+    if (!allUsageData[todayStr]) allUsageData[todayStr] = {};
+    appUsage = allUsageData[todayStr];
+    warningSent = {};
+  }
+}
 
 // INSTANT PRE-FETCH CACHE
 for (const [appName, exePath] of Object.entries(appPaths)) {
@@ -95,7 +117,8 @@ ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes:
     const displayAppName = activityName.trim() + ' (Offline)';
     const seconds = minutes * 60;
     appUsage[displayAppName] = (appUsage[displayAppName] || 0) + seconds;
-    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(appUsage)));
+    allUsageData[todayStr] = appUsage;
+    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData)));
     lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
     
     // Force an instant update to the frontend immediately!
@@ -118,7 +141,8 @@ ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes:
 ipcMain.handle('remove-app-usage', async (_event, appName: string) => {
   try {
     delete appUsage[appName];
-    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(appUsage)));
+    allUsageData[todayStr] = appUsage;
+    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData)));
     lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
     
     // Force an instant update to the frontend immediately!
@@ -163,8 +187,10 @@ ipcMain.handle('refresh-app-icon', async (_event, appName: string) => {
 
 ipcMain.handle('clear-usage-data', async () => {
   try {
-    appUsage = {};
-    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(appUsage)));
+    allUsageData = {};
+    allUsageData[todayStr] = {};
+    appUsage = allUsageData[todayStr];
+    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData)));
     lastUiUpdate = 0; // Trigger an immediate UI refresh
     
     BrowserWindow.getAllWindows().forEach(win => {
@@ -178,6 +204,10 @@ ipcMain.handle('clear-usage-data', async () => {
     });
     return true;
   } catch (e) { return false; }
+});
+
+ipcMain.handle('get-history', () => {
+  return allUsageData;
 });
 
 function cleanAppName(rawName: string): string {
@@ -212,6 +242,8 @@ async function startTracking(mainWindow: BrowserWindow) {
           const now = Date.now();
           const timeDiff = Math.floor((now - lastCheckTime) / 1000);
           lastCheckTime = now;
+
+          checkDateRoll();
 
           // WARM-UP CACHE: Save new paths instantly
           if (!appIcons[displayAppName] && rawPath) {
@@ -280,6 +312,7 @@ async function startTracking(mainWindow: BrowserWindow) {
 
           const timeSinceLastUpdate = now - lastUiUpdate;
           if (appChanged || timeSinceLastUpdate >= 60000) {
+            allUsageData[todayStr] = appUsage;
             const liveUsageData = { ...appUsage };
 
             mainWindow.webContents.send('window-update', {
@@ -290,7 +323,7 @@ async function startTracking(mainWindow: BrowserWindow) {
               appIcons: appIcons
             });
 
-            fs.promises.writeFile(dataPath, encryptData(JSON.stringify(liveUsageData))).catch(()=>{});
+            fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData))).catch(()=>{});
             lastUiUpdate = now;
           }
 

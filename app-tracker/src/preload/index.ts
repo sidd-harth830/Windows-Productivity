@@ -22,7 +22,10 @@ const api = {
   refreshAppIcon: (appName: string) => ipcRenderer.invoke('refresh-app-icon', appName),
 
   // NEW: Clear Usage Data
-  clearUsageData: () => ipcRenderer.invoke('clear-usage-data')
+  clearUsageData: () => ipcRenderer.invoke('clear-usage-data'),
+
+  // NEW: Get History
+  getHistory: () => ipcRenderer.invoke('get-history')
 }
 
 if (process.contextIsolated) {
