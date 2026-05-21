@@ -188,6 +188,8 @@ const App: React.FC = () => {
 
   const handlePresetChange = (preset: string) => {
     setDatePreset(preset);
+    if (preset === 'custom') return;
+
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
@@ -497,31 +499,45 @@ const App: React.FC = () => {
                   <SelectItem value="last7" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Last 7 Days</SelectItem>
                   <SelectItem value="last30" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Last 30 Days</SelectItem>
                   <SelectItem value="all" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">All Time</SelectItem>
-                  <SelectItem value="custom" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]" disabled>Custom</SelectItem>
+                  <SelectItem value="custom" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Custom</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="w-px h-4 bg-[var(--panel-border)] mx-1"></div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="bg-transparent text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[var(--panel-border)] px-3 py-1.5 rounded-md transition-colors text-left min-w-[110px]">
-                    {analyticsStartDate ? format(new Date(analyticsStartDate + "T00:00:00"), "MMM d, yyyy") : "Start"}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={new Date(analyticsStartDate + "T00:00:00")} onSelect={(d) => { if(d) { setAnalyticsStartDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); setDatePreset('custom'); }}} initialFocus />
-                </PopoverContent>
-              </Popover>
-              <span className="text-[var(--text)] opacity-40 font-bold text-xs tracking-widest px-1">TO</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="bg-transparent text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[var(--panel-border)] px-3 py-1.5 rounded-md transition-colors text-left min-w-[110px]">
-                    {analyticsEndDate ? format(new Date(analyticsEndDate + "T00:00:00"), "MMM d, yyyy") : "End"}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={new Date(analyticsEndDate + "T00:00:00")} onSelect={(d) => { if(d) { setAnalyticsEndDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); setDatePreset('custom'); }}} initialFocus />
-                </PopoverContent>
-              </Popover>
+              {datePreset === 'custom' && (
+                <>
+                  <div className="w-px h-4 bg-[var(--panel-border)] mx-1"></div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="bg-transparent text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[var(--panel-border)] px-3 py-1.5 rounded-md transition-colors text-left min-w-[210px] flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        {analyticsStartDate === analyticsEndDate 
+                          ? format(new Date(analyticsStartDate + "T00:00:00"), "MMM d, yyyy")
+                          : `${format(new Date(analyticsStartDate + "T00:00:00"), "MMM d, yyyy")} - ${format(new Date(analyticsEndDate + "T00:00:00"), "MMM d, yyyy")}`}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar 
+                        mode="range" 
+                        defaultMonth={new Date(analyticsStartDate + "T00:00:00")}
+                        selected={{ from: new Date(analyticsStartDate + "T00:00:00"), to: new Date(analyticsEndDate + "T00:00:00") }} 
+                        onSelect={(range: any) => {
+                          if (range?.from) {
+                            const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth()+1).padStart(2,'0')}-${String(range.from.getDate()).padStart(2,'0')}`;
+                            setAnalyticsStartDate(fromStr);
+                            if (range.to) {
+                              const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth()+1).padStart(2,'0')}-${String(range.to.getDate()).padStart(2,'0')}`;
+                              setAnalyticsEndDate(toStr);
+                            } else {
+                              setAnalyticsEndDate(fromStr);
+                            }
+                          }
+                        }} 
+                        initialFocus 
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
             </div>
           </div>
         </div>
