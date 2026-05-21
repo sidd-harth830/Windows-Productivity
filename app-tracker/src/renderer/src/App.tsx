@@ -238,6 +238,8 @@ const App: React.FC = () => {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
+  const totalCategoryTime = pieData.reduce((sum, item) => sum + item.value, 0);
+
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
@@ -435,8 +437,8 @@ const App: React.FC = () => {
         <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
           <div className="lg:col-span-8 flex flex-col gap-4">
             <h3 className="text-lg font-bold text-[var(--text)] tracking-wide ml-2">Top Applications</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {analyticsChartData.slice(0, 4).map((app) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
+              {analyticsChartData.map((app) => (
                 <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className="bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg hover:border-[rgba(var(--a1),0.3)] transition-colors cursor-context-menu">
                   <div className="w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[var(--panel-border)] flex items-center justify-center p-2.5 shadow-inner shrink-0">
                     {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
@@ -469,10 +471,15 @@ const App: React.FC = () => {
                       <Tooltip 
                         content={({ active, payload }: any) => {
                           if (active && payload && payload.length) {
+                            const percent = totalCategoryTime > 0 
+                              ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1) 
+                              : '0.0';
                             return (
                               <div className="bg-[var(--bg)]/95 backdrop-blur-xl border border-[var(--panel-border)] p-3 rounded-xl shadow-xl z-50">
                                 <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{payload[0].name}</p>
-                                <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">{formatTime(payload[0].value)}</p>
+                                <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">
+                                  {formatTime(payload[0].value)} <span className="text-[var(--text)] opacity-60 ml-1">({percent}%)</span>
+                                </p>
                               </div>
                             );
                           }
