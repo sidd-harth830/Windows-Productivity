@@ -5,11 +5,6 @@ import Toast from './components/Toast'
 import ContextMenu from './components/ContextMenu'
 import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X } from './components/Icons'
 
-export const THEMES = {
-  dark: { bg: '#0A0A0B', text: '#F8FAFC', a1: '56, 189, 248', a2: '139, 92, 246', panelBg: 'rgba(255,255,255,0.03)', panelBorder: 'rgba(255,255,255,0.08)' },
-  light: { bg: '#E2E8F0', text: '#0F172A', a1: '37, 99, 235', a2: '79, 70, 229', panelBg: 'rgba(255, 255, 255, 0.65)', panelBorder: 'rgba(255, 255, 255, 0.9)' }
-};
-
 interface WindowData {
   name: string; title: string; focusTime: number;
   allUsage: Record<string, number>; appIcons: Record<string, string>;
@@ -45,9 +40,18 @@ const App: React.FC = () => {
   const [themePref, setThemePref] = useState<'system' | 'light' | 'dark'>(() => (localStorage.getItem('themePref') as 'system' | 'light' | 'dark') || 'system');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('dark');
 
+  const effectiveTheme = themePref === 'system' ? systemTheme : themePref;
+
   useEffect(() => { localStorage.setItem('trackSelf', JSON.stringify(trackSelf)); }, [trackSelf]);
   useEffect(() => { localStorage.setItem('trackSystemApps', JSON.stringify(trackSystemApps)); }, [trackSystemApps]);
   useEffect(() => { localStorage.setItem('themePref', themePref); }, [themePref]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    
+    root.classList.remove('light', 'dark');
+    root.classList.add(effectiveTheme);
+  }, [themePref, systemTheme]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -499,13 +503,13 @@ const App: React.FC = () => {
               <div className="w-px h-4 bg-[var(--panel-border)] mx-1"></div>
               <input 
                 type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={(e) => { setAnalyticsStartDate(e.target.value); setDatePreset('custom'); }}
-                style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
+                style={{ colorScheme: effectiveTheme === 'dark' ? 'dark' : 'light' }}
                 className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
               />
               <span className="text-[var(--text)] opacity-40 font-bold text-xs tracking-widest px-1">TO</span>
               <input 
                 type="date" value={analyticsEndDate} min={analyticsStartDate} max={todayStr} onChange={(e) => { setAnalyticsEndDate(e.target.value); setDatePreset('custom'); }}
-                style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
+                style={{ colorScheme: effectiveTheme === 'dark' ? 'dark' : 'light' }}
                 className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
               />
             </div>
@@ -759,14 +763,10 @@ const App: React.FC = () => {
     </div>
   );
 
-  const activeThemeKey = themePref === 'system' ? systemTheme : themePref;
-  const activeTheme = THEMES[activeThemeKey] || THEMES.dark; // Guaranteed Safe Fallback!
-
   if (isLoading) {
     return (
       <div
-        className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500"
-        style={{ backgroundColor: activeTheme.bg, '--bg': activeTheme.bg, '--text': activeTheme.text, '--a1': activeTheme.a1, '--a2': activeTheme.a2, '--panel-bg': activeTheme.panelBg, '--panel-border': activeTheme.panelBorder } as React.CSSProperties}
+        className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500 bg-background text-foreground"
       >
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
@@ -813,8 +813,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500"
-      style={{ backgroundColor: activeTheme.bg, '--bg': activeTheme.bg, '--text': activeTheme.text, '--a1': activeTheme.a1, '--a2': activeTheme.a2, '--panel-bg': activeTheme.panelBg, '--panel-border': activeTheme.panelBorder } as React.CSSProperties}
+      className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500 bg-background text-foreground"
     >
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>

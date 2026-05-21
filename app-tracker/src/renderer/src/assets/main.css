@@ -3,9 +3,56 @@
 /* Tailwind v4 handles custom themes directly in CSS */
 @theme {
   --font-sans: "Acorn", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+}
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #E2E8F0;
+  --foreground: #0F172A;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --card: rgba(255, 255, 255, 0.65);
+  --card-foreground: #0F172A;
+  --border: rgba(255, 255, 255, 0.9);
+  --muted: rgba(255, 255, 255, 0.4);
+  --muted-foreground: rgba(15, 23, 42, 0.6);
+  
+  /* Legacy variables mapped for smooth component migration */
+  --bg: var(--background);
+  --text: var(--foreground);
+  --a1: 37, 99, 235;
+  --a2: 79, 70, 229;
+  --panel-bg: var(--card);
+  --panel-border: var(--border);
+}
+
+.dark {
+  --background: #0A0A0B;
+  --foreground: #F8FAFC;
+  --primary: #38bdf8;
+  --primary-foreground: #0A0A0B;
+  --card: rgba(255,255,255,0.03);
+  --card-foreground: #F8FAFC;
+  --border: rgba(255,255,255,0.08);
+  --muted: rgba(255,255,255,0.05);
+  --muted-foreground: rgba(248, 250, 252, 0.6);
+
+  /* Legacy variables mapped for smooth component migration */
+  --a1: 56, 189, 248;
+  --a2: 139, 92, 246;
 }
 
 body {
-  background-color: #0f172a; /* Deep dark blue/black */
-  color: white;
+  background-color: var(--background);
+  color: var(--foreground);
 }
