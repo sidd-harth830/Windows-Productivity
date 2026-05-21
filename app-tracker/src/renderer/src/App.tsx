@@ -47,12 +47,14 @@ const App: React.FC = () => {
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
   const [themePref, setThemePref] = useState<'system' | 'light' | 'dark'>(() => (localStorage.getItem('themePref') as 'system' | 'light' | 'dark') || 'system');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('dark');
+  const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(() => parseInt(localStorage.getItem('dailyFocusGoal') || '4', 10));
 
   const effectiveTheme = themePref === 'system' ? systemTheme : themePref;
 
   useEffect(() => { localStorage.setItem('trackSelf', JSON.stringify(trackSelf)); }, [trackSelf]);
   useEffect(() => { localStorage.setItem('trackSystemApps', JSON.stringify(trackSystemApps)); }, [trackSystemApps]);
   useEffect(() => { localStorage.setItem('themePref', themePref); }, [themePref]);
+  useEffect(() => { localStorage.setItem('dailyFocusGoal', dailyFocusGoal.toString()); }, [dailyFocusGoal]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -307,6 +309,22 @@ const App: React.FC = () => {
     return 'Other';
   };
 
+  const calculateProductivityScore = (data: {name: string, time: number}[]) => {
+    let productiveTime = 0;
+    let totalTime = 0;
+    data.forEach(app => {
+      totalTime += app.time;
+      const cat = categorizeApp(app.name);
+      if (cat === 'Development' || cat === 'Productivity') {
+        productiveTime += app.time;
+      } else if (cat === 'Communication') {
+        productiveTime += (app.time * 0.5); // Half weight
+      }
+    });
+    if (totalTime === 0) return 0;
+    return Math.round((productiveTime / totalTime) * 100);
+  };
+
   const categoryDataMap: Record<string, number> = {};
   analyticsChartData.forEach(app => {
     const cat = categorizeApp(app.name);
@@ -325,6 +343,11 @@ const App: React.FC = () => {
     const totalTodayUptime = dashboardData.reduce((acc, curr) => acc + curr.time, 0);
     const displayTotalTime = formatTime(totalTodayUptime);
 
+    const prodScore = calculateProductivityScore(dashboardData);
+    const scoreColor = prodScore >= 75 ? 'text-emerald-400' : prodScore >= 40 ? 'text-[rgb(var(--a1))]' : 'text-amber-400';
+    const goalSeconds = dailyFocusGoal * 3600;
+    const progress = Math.min(1, totalTodayUptime / goalSeconds);
+
     const filteredChartData = dashboardData
       .filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()))
       .sort((a, b) => {
@@ -333,19 +356,19 @@ const App: React.FC = () => {
       });
 
     return (
-      <div ref={dashboardRef} className="flex flex-col h-full gap-8 max-w-6xl mx-auto pb-4 p-4 rounded-xl">
-        <div className="stagger-item mb-2 flex flex-col md:flex-row justify-between items-start md:items-end gap-4" style={{ animationDelay: '0.05s' }}>
+      <div ref={dashboardRef} className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+        <div className="stagger-item mb-2 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4" style={{ animationDelay: '0.05s' }}>
           <div>
-            <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
               Productivity Dashboard
             </h1>
-            <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
+            <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
           </div>
         </div>
 
-        <div className="stagger-item grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0" style={{ animationDelay: '0.15s' }}>
-          <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-6 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-xl cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, displayAppName)}>
-            <div className="relative w-16 h-16 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-2">
+        <div className="stagger-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.15s' }}>
+          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex items-center gap-3 sm:gap-4 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, displayAppName)}>
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-2">
               {activeApp?.appIcons?.[displayAppName] ? (
                 <img src={activeApp.appIcons[displayAppName]} alt="Most Used App" className="max-w-[44px] max-h-[44px] object-contain drop-shadow-md" />
               ) : (
@@ -358,25 +381,25 @@ const App: React.FC = () => {
                 </span>
               )}
             </div>
-            <div className="flex flex-col justify-center min-h-[80px] overflow-hidden">
-              <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Most Used App</span>
-              <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate">{displayAppName}</span>
+            <div className="flex flex-col justify-center overflow-hidden">
+              <span className="text-[var(--text)] opacity-50 text-[10px] sm:text-xs mb-0.5 sm:mb-1 uppercase tracking-widest font-black">Most Used App</span>
+              <span className="text-xl sm:text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate">{displayAppName}</span>
             </div>
           </div>
 
-          <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-6 rounded-3xl flex flex-col justify-center min-h-[128px] hover:border-[rgba(var(--a2),0.4)] transition-all duration-300 shadow-xl">
-          <span className="text-[var(--text)] opacity-50 text-xs mb-2 uppercase tracking-widest font-black">Total Today Uptime</span>
-            <span className="text-4xl font-black text-[var(--text)] tracking-wider">
+          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col justify-center hover:border-[rgba(var(--a2),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+            <span className="text-[var(--text)] opacity-50 text-[10px] sm:text-xs mb-1 sm:mb-2 uppercase tracking-widest font-black">Total Today Uptime</span>
+            <span className="text-3xl sm:text-4xl font-black text-[var(--text)] tracking-wider">
             {displayTotalTime}
             </span>
           </div>
         </div>
 
-        <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[400px]" style={{ animationDelay: '0.25s' }}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <h2 className="text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
+        <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]" style={{ animationDelay: '0.25s' }}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto print:hidden">
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full md:w-64">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
@@ -447,28 +470,28 @@ const App: React.FC = () => {
   const renderAnalytics = () => {
     if (isAnalyticsLoading) {
       return (
-        <div className="flex flex-col h-full gap-8 max-w-6xl mx-auto w-full pb-4 p-4 rounded-xl animate-in fade-in duration-300">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
-            <div className="flex flex-col gap-3">
-              <div className="h-12 w-72 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
-              <div className="h-5 w-48 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
+        <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4 animate-in fade-in duration-300">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4 mb-2">
+            <div className="flex flex-col gap-2 sm:gap-3">
+              <div className="h-10 sm:h-14 w-64 sm:w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
+              <div className="h-4 sm:h-6 w-48 sm:w-64 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
             </div>
-            <div className="h-10 w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl animate-pulse"></div>
+            <div className="h-10 w-full sm:w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl animate-pulse"></div>
           </div>
-          <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[350px]">
-            <div className="h-6 w-56 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50 mb-6"></div>
+          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl min-h-[300px] sm:min-h-[400px]">
+            <div className="h-6 sm:h-8 w-40 sm:w-48 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50 mb-6"></div>
             <div className="flex-1 w-full bg-[var(--panel-border)] rounded-2xl animate-pulse opacity-20"></div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
-            <div className="lg:col-span-8 flex flex-col gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 shrink-0">
+            <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ml-2">
                 <div className="h-6 w-48 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50"></div>
                 <div className="h-9 w-56 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-lg animate-pulse"></div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="bg-[var(--panel-bg)] border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg">
-                    <div className="w-14 h-14 rounded-2xl bg-[var(--panel-border)] animate-pulse opacity-30 shrink-0"></div>
+                  <div key={i} className="bg-[var(--panel-bg)] border border-[var(--panel-border)] p-4 sm:p-6 rounded-2xl lg:rounded-3xl flex items-center gap-4 sm:gap-5 shadow-lg">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--panel-border)] animate-pulse opacity-30 shrink-0"></div>
                     <div className="flex-1">
                       <div className="h-3 w-20 bg-[var(--panel-border)] rounded animate-pulse opacity-40 mb-3"></div>
                       <div className="h-6 w-32 bg-[var(--panel-border)] rounded animate-pulse opacity-60"></div>
@@ -477,7 +500,7 @@ const App: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="lg:col-span-4 bg-[var(--panel-bg)] border border-[var(--panel-border)] p-6 rounded-3xl shadow-lg flex flex-col items-center min-h-[250px]">
+            <div className="lg:col-span-4 bg-[var(--panel-bg)] border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl lg:rounded-3xl shadow-lg flex flex-col items-center min-h-[250px]">
               <div className="h-6 w-40 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50 mb-8 mt-2"></div>
               <div className="w-40 h-40 rounded-full bg-[var(--panel-border)] animate-pulse opacity-20"></div>
             </div>
@@ -494,18 +517,28 @@ const App: React.FC = () => {
 
     const filteredAnalyticsApps = analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
 
+    const getInsight = () => {
+      if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";
+      const topCat = pieData[0];
+      const percent = Math.round((topCat.value / totalCategoryTime) * 100);
+      if (topCat.name === 'Entertainment' || topCat.name === 'Browsing') {
+        return `You've spent ${percent}% of your tracked time on ${topCat.name}. Consider enabling Focus Mode to stay on track.`;
+      }
+      return `Great job! Your primary focus was ${topCat.name}, accounting for ${percent}% of your tracked time.`;
+    };
+
     return (
-      <div ref={analyticsRef} className="flex flex-col h-full gap-8 max-w-6xl mx-auto w-full pb-4 p-4 rounded-xl">
-        <div className="stagger-item flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2" style={{ animationDelay: '0.05s' }}>
+      <div ref={analyticsRef} className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+        <div className="stagger-item flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4 mb-2" style={{ animationDelay: '0.05s' }}>
           <div>
-            <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
               Usage Analytics
             </h1>
-            <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
+            <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
             <span className="text-[var(--text)] opacity-60 text-sm font-bold">Date Range:</span>
-            <div className="flex items-center gap-2 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-3 py-1.5 shadow-inner">
+            <div className="flex items-center gap-1 sm:gap-2 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-2 sm:px-3 py-1.5 shadow-inner w-full sm:w-auto overflow-x-auto custom-scrollbar">
               <Select value={datePreset} onValueChange={handlePresetChange}>
                 <SelectTrigger className="bg-transparent border-none text-[rgb(var(--a1))] text-sm font-bold shadow-none focus:ring-0 p-0 h-auto gap-1">
                   <SelectValue placeholder="Select Date" />
@@ -576,12 +609,22 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[350px]" style={{ animationDelay: '0.15s' }}>
-          <h2 className="text-xl font-bold text-[var(--text)] mb-6 tracking-wide">Screen Time Trends</h2>
+        <div className="stagger-item bg-gradient-to-r from-[rgba(var(--a1),0.15)] to-transparent border border-[rgba(var(--a1),0.3)] p-4 sm:p-5 rounded-xl sm:rounded-2xl flex items-center gap-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] shrink-0" style={{ animationDelay: '0.1s' }}>
+          <div className="w-10 h-10 rounded-full bg-[rgb(var(--a1))] flex items-center justify-center text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.5)] shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <div>
+            <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Smart Insight</h4>
+            <p className="text-xs sm:text-sm text-[var(--text)] opacity-70 mt-0.5 font-medium">{getInsight()}</p>
+          </div>
+        </div>
+
+        <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[300px] sm:min-h-[350px]" style={{ animationDelay: '0.15s' }}>
+          <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] mb-4 sm:mb-6 tracking-wide">Screen Time Trends</h2>
           <div className="flex-1 w-full min-h-0 min-w-0">
             {realTrendData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 25, bottom: 0 }}>
+                <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
@@ -618,11 +661,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
-          <div className="lg:col-span-8 flex flex-col gap-4">
+        <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
+          <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ml-2">
-              <h3 className="text-lg font-bold text-[var(--text)] tracking-wide">Top Applications</h3>
-              <div className="relative w-full sm:w-56 print:hidden">
+              <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide">Top Applications</h3>
+              <div className="relative w-full sm:w-64 print:hidden">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
@@ -635,12 +678,12 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
               {filteredAnalyticsApps.map((app) => {
                 const isActive = lastActiveValidApp === app.name;
                 return (
-                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-xl border p-6 rounded-3xl flex items-center gap-5 shadow-lg transition-colors cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'}`}>
-                  <div className={`w-14 h-14 rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
+                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-3xl border p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 sm:gap-5 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'}`}>
+                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
                     {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
                     {isActive && (
                       <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 shrink-0" title="Currently Active">
@@ -668,8 +711,8 @@ const App: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl shadow-lg flex flex-col min-h-[250px]">
-            <h3 className="text-lg font-bold text-[var(--text)] tracking-wide mb-4 text-center">Category Breakdown</h3>
+          <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl lg:rounded-3xl shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col min-h-[250px]">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide mb-4 text-center">Category Breakdown</h3>
             <div className="flex-1 w-full min-h-[180px] relative">
               {pieData.length > 0 ? (
                 <>
@@ -723,58 +766,70 @@ const App: React.FC = () => {
   };
 
   const renderSettings = () => (
-    <div className="flex flex-col h-full gap-8 max-w-5xl mx-auto w-full">
-      <div className="stagger-item shrink-0 mb-2" style={{ animationDelay: '0.05s' }}>
-        <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
+    <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+      <div className="stagger-item shrink-0 mb-2 sm:mb-4" style={{ animationDelay: '0.05s' }}>
+        <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
           Application Preferences
         </h1>
-        <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Customize your tracking and visual experience.</p>
+        <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Customize your tracking and visual experience.</p>
       </div>
 
-      <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] rounded-3xl shadow-xl flex-1 flex flex-col overflow-hidden" style={{ animationDelay: '0.15s' }}>
-        <div className="p-8 pr-4 flex flex-col gap-10 overflow-y-auto custom-scrollbar h-full">
+      <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] rounded-2xl lg:rounded-3xl shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex-1 flex flex-col overflow-hidden" style={{ animationDelay: '0.15s' }}>
+        <div className="p-5 sm:p-6 lg:p-8 pr-2 sm:pr-4 flex flex-col gap-8 sm:gap-10 overflow-y-auto custom-scrollbar h-full">
           <div className="flex flex-col gap-4">
-            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Tracking Engine</h3>
+            <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">Tracking Engine</h3>
 
-            <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
+            <div className="flex items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
                   <HardDrive className="w-6 h-6 text-[rgb(var(--a1))]" />
                 </div>
                 <div>
-                  <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Track Windows System Apps</h4>
-                  <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include internal OS components like Windows Explorer and Search.</p>
+                  <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Track Windows System Apps</h4>
+                  <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Include internal OS components like Windows Explorer and Search.</p>
                 </div>
               </div>
               <Switch checked={trackSystemApps} onCheckedChange={setTrackSystemApps} />
             </div>
 
-            <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
+            <div className="flex items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
                   <Eye className="w-6 h-6 text-[rgb(var(--a2))]" />
                 </div>
                 <div>
-                  <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Track Zeitra Usage</h4>
-                  <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include the time spent staring at this dashboard in your statistics.</p>
+                  <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Track Zeitra Usage</h4>
+                  <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Include the time spent staring at this dashboard in your statistics.</p>
                 </div>
               </div>
               <Switch checked={trackSelf} onCheckedChange={setTrackSelf} />
             </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
+              <div>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Daily Focus Goal</h4>
+                <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Set a target for how many hours you want to be productive today.</p>
+              </div>
+              <div className="flex items-center justify-between bg-[var(--panel-bg)] border border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] transition-all rounded-xl px-2 py-1.5 w-full sm:w-36 shadow-inner shrink-0">
+                <button type="button" onClick={() => setDailyFocusGoal(Math.max(1, dailyFocusGoal - 1))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">-</button>
+                <input type="number" min="1" max="24" value={dailyFocusGoal} onChange={(e) => setDailyFocusGoal(Number(e.target.value) || 1)} className="w-10 bg-transparent text-[rgb(var(--a1))] text-center font-black text-lg focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]" />
+                <button type="button" onClick={() => setDailyFocusGoal(Math.min(24, dailyFocusGoal + 1))} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">+</button>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-4">
-            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Data Management</h3>
+            <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">Data Management</h3>
 
-            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
               <div>
-                <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
-                <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your application usage history as a CSV for external analysis.</p>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Export Usage Data</h4>
+                <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Download your application usage history as a CSV for external analysis.</p>
               </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-3 xl:mt-0 w-full xl:w-auto">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto shrink-0">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="bg-[var(--panel-bg)] border border-[var(--panel-border)] text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[rgba(var(--a1),0.1)] px-4 py-3 rounded-xl transition-colors text-left min-w-[210px] flex items-center justify-center gap-2 shadow-inner">
+                    <button className="bg-[var(--panel-bg)] border border-[var(--panel-border)] text-xs sm:text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[rgba(var(--a1),0.1)] px-3 sm:px-4 py-2 sm:py-3 rounded-xl transition-colors text-left min-w-[180px] sm:min-w-[210px] flex items-center justify-center gap-2 shadow-inner">
                       <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                       {exportStartDate === exportEndDate 
                         ? format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")
@@ -822,9 +877,9 @@ const App: React.FC = () => {
                 </Popover>
                 <button 
                   onClick={handleExportCsv}
-                  className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center justify-center gap-2"
+                  className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center justify-center gap-2 shrink-0"
                 >
-                  <Download className="w-5 h-5" />
+                  <Download className="w-4 h-4 sm:w-5 sm:h-5" />
                   EXPORT CSV
                 </button>
               </div>
@@ -832,13 +887,13 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-4 pb-10">
-            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide">Appearance Options</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">Appearance Options</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {(['system', 'light', 'dark'] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setThemePref(t)}
-                  className={`flex items-center justify-center gap-3 p-5 rounded-2xl border transition-all duration-300 cursor-pointer ${themePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
+                  className={`flex items-center justify-center gap-2 sm:gap-3 p-4 sm:p-5 rounded-xl sm:rounded-2xl border transition-all duration-300 cursor-pointer ${themePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
                 >
                   {t === 'system' && <Monitor className="w-5 h-5 text-[var(--text)] opacity-80" />}
                   {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
@@ -850,19 +905,19 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-4">
-            <h3 className="text-[var(--text)] font-bold text-xl border-b border-[var(--panel-border)] pb-3 tracking-wide text-red-400">Danger Zone</h3>
+            <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide text-red-400">Danger Zone</h3>
 
-            <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-red-500/5 p-5 rounded-2xl border border-red-500/20 shadow-inner gap-4">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between bg-red-500/5 p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-red-500/20 shadow-inner gap-4">
               <div>
-                <h4 className="text-red-400 font-bold text-base tracking-wide">Clear All Usage Data</h4>
-                <p className="text-sm text-red-400/70 mt-1 max-w-lg font-medium">Permanently delete all recorded application history and offline logs. This cannot be undone.</p>
+                <h4 className="text-red-400 font-bold text-sm sm:text-base tracking-wide">Clear All Usage Data</h4>
+                <p className="text-xs sm:text-sm text-red-400/70 mt-0.5 sm:mt-1 max-w-lg font-medium">Permanently delete all recorded application history and offline logs. This cannot be undone.</p>
               </div>
-              <div className="flex gap-3 mt-3 xl:mt-0">
+              <div className="flex gap-3 mt-2 lg:mt-0 w-full lg:w-auto">
                 <button 
                   onClick={handleClearData}
-                  className="bg-red-500 hover:brightness-125 text-white px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center gap-2"
+                  className="bg-red-500 hover:brightness-125 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center justify-center w-full lg:w-auto gap-2"
                 >
-                  <X className="w-5 h-5" strokeWidth={3} />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
                   CLEAR DATA
                 </button>
               </div>
@@ -883,35 +938,37 @@ const App: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
         
         {/* Sidebar Skeleton */}
-        <div className="w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-8 flex flex-col justify-between relative z-10 backdrop-blur-2xl shadow-2xl print:hidden animate-pulse">
-          <div className="flex flex-col gap-10">
-            <div className="px-2 h-12 w-32 bg-[var(--panel-border)] opacity-50 rounded-lg"></div>
-            <nav className="flex flex-col gap-3">
+        <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-2xl print:hidden animate-pulse transition-all duration-300">
+          <div className="flex flex-col gap-8 md:gap-10">
+            <div className="flex justify-center md:justify-start px-0 md:px-2">
+              <div className="h-10 md:h-12 w-10 md:w-28 bg-[var(--panel-border)] opacity-50 rounded-lg"></div>
+            </div>
+            <nav className="flex flex-col gap-2 md:gap-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-14 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
+                <div key={i} className="h-12 md:h-14 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
               ))}
             </nav>
           </div>
-          <div className="flex flex-col gap-4">
-            <div className="h-12 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
-            <div className="h-16 w-full bg-[var(--panel-border)] opacity-30 rounded-2xl"></div>
+          <div className="flex flex-col gap-2 md:gap-4">
+            <div className="h-12 md:h-14 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
+            <div className="h-10 md:h-14 w-full bg-[var(--panel-border)] opacity-30 rounded-2xl"></div>
           </div>
         </div>
 
         {/* Dashboard Skeleton */}
-        <main className="flex-1 p-10 overflow-y-auto relative z-10 w-full h-full">
-          <div className="flex flex-col h-full gap-8 max-w-6xl mx-auto pb-4 p-4 rounded-xl animate-in fade-in duration-300">
-            <div className="flex flex-col gap-3 mb-2">
-              <div className="h-14 w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
-              <div className="h-6 w-64 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto relative z-10 w-full h-full">
+          <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4 animate-in fade-in duration-300">
+            <div className="flex flex-col gap-2 sm:gap-3 mb-2">
+              <div className="h-10 sm:h-14 w-64 sm:w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
+              <div className="h-4 sm:h-6 w-48 sm:w-64 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
-              <div className="h-28 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-3xl animate-pulse"></div>
-              <div className="h-28 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-3xl animate-pulse"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 shrink-0">
+              <div className="h-24 sm:h-28 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl lg:rounded-3xl animate-pulse"></div>
+              <div className="h-24 sm:h-28 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl lg:rounded-3xl animate-pulse"></div>
             </div>
-            <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[400px]">
-              <div className="flex justify-between items-center mb-8 gap-4">
-                <div className="h-8 w-48 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50"></div>
+            <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl min-h-[300px] sm:min-h-[400px]">
+              <div className="flex justify-between items-center mb-6 sm:mb-8 gap-4">
+                <div className="h-6 sm:h-8 w-40 sm:w-48 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50"></div>
                 <div className="h-10 w-80 bg-[var(--panel-border)] rounded-xl animate-pulse opacity-30 hidden md:block"></div>
               </div>
               <div className="flex-1 w-full bg-[var(--panel-border)] rounded-2xl animate-pulse opacity-20"></div>
@@ -929,56 +986,56 @@ const App: React.FC = () => {
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
 
-      <div className="w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-8 flex flex-col justify-between relative z-10 backdrop-blur-2xl shadow-2xl print:hidden">
-        <div className="flex flex-col gap-10">
-          <div className="px-2">
-            <ZeitraLogo className="w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]" />
+      <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-[20px_0_40px_rgba(0,0,0,0.1)] print:hidden transition-all duration-300">
+        <div className="flex flex-col gap-8 md:gap-10">
+          <div className="px-0 md:px-2 flex justify-center md:justify-start">
+            <ZeitraLogo className="w-10 md:w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)] transition-all duration-300" />
           </div>
 
-          <nav className="flex flex-col gap-3">
+          <nav className="flex flex-col gap-2 md:gap-3">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'dashboard' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold border-l-4 border-[rgb(var(--a1))] pl-4 shadow-lg' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'dashboard' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a1))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
             >
-              <LayoutDashboard className={`w-5 h-5 ${activeTab === 'dashboard' ? 'text-[rgb(var(--a1))] drop-shadow-md' : ''}`} />
-              Dashboard
+              <LayoutDashboard className={`w-6 h-6 md:w-5 md:h-5 shrink-0 ${activeTab === 'dashboard' ? 'text-[rgb(var(--a1))] drop-shadow-md' : ''}`} />
+              <span className="hidden md:block">Dashboard</span>
             </button>
 
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'analytics' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold border-l-4 border-[rgb(var(--a1))] pl-4 shadow-lg' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'analytics' ? 'bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a1))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
             >
-              <LineChart className={`w-5 h-5 ${activeTab === 'analytics' ? 'text-[rgb(var(--a1))] drop-shadow-md' : ''}`} />
-              Analytics
+              <LineChart className={`w-6 h-6 md:w-5 md:h-5 shrink-0 ${activeTab === 'analytics' ? 'text-[rgb(var(--a1))] drop-shadow-md' : ''}`} />
+              <span className="hidden md:block">Analytics</span>
             </button>
 
             <button
               onClick={() => setActiveTab('controls')}
-              className={`flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'controls' ? 'bg-[rgba(var(--a2),0.15)] text-[var(--text)] font-bold border-l-4 border-[rgb(var(--a2))] pl-4 shadow-lg' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+              className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-4 rounded-xl transition-all duration-300 cursor-pointer text-sm tracking-wide ${activeTab === 'controls' ? 'bg-[rgba(var(--a2),0.15)] text-[var(--text)] font-bold md:border-l-4 border-[rgb(var(--a2))] md:pl-4 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
             >
-              <ShieldAlert className={`w-5 h-5 ${activeTab === 'controls' ? 'text-[rgb(var(--a2))] drop-shadow-md' : ''}`} />
-              Controls
+              <ShieldAlert className={`w-6 h-6 md:w-5 md:h-5 shrink-0 ${activeTab === 'controls' ? 'text-[rgb(var(--a2))] drop-shadow-md' : ''}`} />
+              <span className="hidden md:block">Controls</span>
             </button>
           </nav>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 md:gap-4">
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-4 px-5 py-3 rounded-xl transition-all duration-300 cursor-pointer text-sm font-bold tracking-wide ${activeTab === 'settings' ? 'bg-[var(--panel-bg)] text-[var(--text)] border-l-4 border-[var(--text)] pl-4 shadow-md' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
+            className={`flex items-center justify-center md:justify-start gap-0 md:gap-4 p-3 md:px-5 md:py-3 rounded-xl transition-all duration-300 cursor-pointer text-sm font-bold tracking-wide ${activeTab === 'settings' ? 'bg-[var(--panel-bg)] text-[var(--text)] md:border-l-4 border-[var(--text)] md:pl-4 shadow-md shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' : 'text-[var(--text)] opacity-50 hover:bg-[var(--panel-bg)] hover:opacity-100 font-semibold'}`}
           >
-            <Settings className="w-5 h-5" />
-            Settings
+            <Settings className="w-6 h-6 md:w-5 md:h-5 shrink-0" />
+            <span className="hidden md:block">Settings</span>
           </button>
 
-          <div className="flex items-center gap-4 bg-[var(--bg)] border border-[var(--panel-border)] rounded-2xl p-5 shadow-inner">
-            <div className="w-2.5 h-2.5 rounded-full bg-[rgb(var(--a1))] animate-pulse shadow-[0_0_8px_rgb(var(--a1))]"></div>
-            <span className="text-xs text-[var(--text)] opacity-80 font-bold tracking-widest uppercase">Engine Live</span>
+          <div className="flex items-center justify-center md:justify-start gap-0 md:gap-4 bg-transparent md:bg-[var(--bg)] border-none md:border border-[var(--panel-border)] rounded-2xl p-2 md:p-4 shadow-none md:shadow-inner transition-all duration-300">
+            <div className="w-3 h-3 md:w-2.5 md:h-2.5 rounded-full bg-[rgb(var(--a1))] animate-pulse shadow-[0_0_8px_rgb(var(--a1))] shrink-0"></div>
+            <span className="hidden md:block text-xs text-[var(--text)] opacity-80 font-bold tracking-widest uppercase truncate">Engine Live</span>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 p-10 overflow-y-auto relative z-10 w-full h-full print:p-0 print:overflow-visible">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto relative z-10 w-full h-full print:p-0 print:overflow-visible">
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'analytics' && renderAnalytics()}
         {activeTab === 'settings' && renderSettings()}

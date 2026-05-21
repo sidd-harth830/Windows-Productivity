@@ -98,25 +98,25 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
     };
 
     return (
-        <div className="flex flex-col h-full gap-8 max-w-6xl mx-auto">
-            <div className="stagger-item shrink-0" style={{ animationDelay: '0.05s' }}>
-                <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] text-transparent bg-clip-text font-['Acorn',_sans-serif]">
+        <div className="flex flex-col h-full gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto w-full pb-4">
+            <div className="stagger-item shrink-0 mb-2 sm:mb-4" style={{ animationDelay: '0.05s' }}>
+                <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
                     Zeitra Controls
                 </h1>
-                <p className="text-[var(--text)] opacity-60 text-lg font-medium">Manage your Windows configuration and focus limits.</p>
+                <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Manage your Windows configuration and focus limits.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-0 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 flex-1 min-h-0 items-start">
 
-                <div className="lg:col-span-5 flex flex-col gap-6">
-                    <div className={`stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border p-8 rounded-3xl flex flex-col gap-8 transition-all duration-300 shadow-xl ${isFocusMode ? 'border-[rgba(var(--a2),0.5)] shadow-[0_0_40px_rgba(var(--a2),0.2)]' : 'border-[var(--panel-border)]'}`} style={{ animationDelay: '0.1s' }}>
+                <div className="lg:col-span-5 flex flex-col gap-4 sm:gap-6">
+                    <div className={`stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col gap-6 sm:gap-8 transition-all duration-300 shadow-2xl ${isFocusMode ? 'border-[rgba(var(--a2),0.5)] shadow-[0_0_40px_rgba(var(--a2),0.2),inset_0_1px_0_rgba(255,255,255,0.1)]' : 'border-[var(--panel-border)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'}`} style={{ animationDelay: '0.1s' }}>
                         <div className="flex items-start justify-between w-full gap-4">
                             <div className="flex flex-col gap-2">
-                                <div className={`p-3.5 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-inner border ${isFocusMode ? 'bg-[rgba(var(--a2),0.2)] text-[rgb(var(--a2))] border-[rgba(var(--a2),0.4)] shadow-[0_0_20px_rgba(var(--a2),0.4)]' : 'bg-[var(--bg)] border-[var(--panel-border)] text-[var(--text)] opacity-50'}`}>
+                                <div className={`p-3 w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 shadow-inner border shrink-0 ${isFocusMode ? 'bg-[rgba(var(--a2),0.2)] text-[rgb(var(--a2))] border-[rgba(var(--a2),0.4)] shadow-[0_0_20px_rgba(var(--a2),0.4)]' : 'bg-[var(--bg)] border-[var(--panel-border)] text-[var(--text)] opacity-50'}`}>
                                     <ShieldBan className="w-full h-full" />
                                 </div>
-                                <h3 className="font-bold text-xl text-[var(--text)] mt-3">Focus Mode Engine</h3>
-                                <p className="text-sm text-[var(--text)] opacity-60 leading-relaxed font-medium">Engage the native Windows blocker to enforce your custom rules and time limits globally.</p>
+                                <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] mt-2 sm:mt-3">Focus Mode Engine</h3>
+                                <p className="text-xs sm:text-sm text-[var(--text)] opacity-60 leading-relaxed font-medium">Engage the native Windows blocker to enforce your custom rules and time limits globally.</p>
                             </div>
 
                             <div className="mt-1">
@@ -125,14 +125,14 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </div>
                     </div>
 
-                    <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex flex-col gap-6 transition-all duration-300 shadow-xl" style={{ animationDelay: '0.15s' }}>
+                    <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col gap-5 sm:gap-6 transition-all duration-300 shadow-2xl" style={{ animationDelay: '0.15s' }}>
                         <div className="flex items-start justify-between w-full gap-4">
                             <div className="flex flex-col gap-2">
-                                <div className="p-3.5 w-14 h-14 rounded-2xl flex items-center justify-center bg-[var(--bg)] border-[var(--panel-border)] text-[var(--text)] opacity-50 shadow-inner border">
+                                <div className="p-3 w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center bg-[var(--bg)] border-[var(--panel-border)] text-[var(--text)] opacity-50 shadow-inner border shrink-0">
                                     <Clock className="w-full h-full" />
                                 </div>
-                                <h3 className="font-bold text-xl text-[var(--text)] mt-3">Offline Log</h3>
-                                <p className="text-sm text-[var(--text)] opacity-60 leading-relaxed font-medium">Add time manually for reading, meetings, or brainstorming away from the screen.</p>
+                                <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] mt-2 sm:mt-3">Offline Log</h3>
+                                <p className="text-xs sm:text-sm text-[var(--text)] opacity-60 leading-relaxed font-medium">Add time manually for reading, meetings, or brainstorming away from the screen.</p>
                             </div>
                         </div>
 
@@ -140,22 +140,22 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             <Input
                                 type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
                                 placeholder="Activity (e.g., Reading Book)"
-                                className="h-14 border-2 rounded-xl px-5 text-base font-bold" required
+                                className="h-12 sm:h-14 border-2 rounded-xl px-4 sm:px-5 text-sm sm:text-base font-bold" required
                             />
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1.5 w-1/2">
-                                    <button type="button" onClick={() => setOfflineMinutes(Math.max(1, offlineMinutes - 5))} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1.5 w-full sm:w-1/2">
+                                    <button type="button" onClick={() => setOfflineMinutes(Math.max(1, offlineMinutes - 5))} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
                                         -
                                     </button>
                                     <div className="flex items-center justify-center flex-1 gap-1">
-                                        <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value) || 0)} className="w-12 bg-transparent text-[rgb(var(--a1))] text-right font-black text-xl focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)] [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]" required />
+                                        <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value) || 0)} className="w-10 sm:w-12 bg-transparent text-[rgb(var(--a1))] text-right font-black text-lg sm:text-xl focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)] [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]" required />
                                         <span className="text-[var(--text)] opacity-50 font-bold text-xs mt-1">m</span>
                                     </div>
-                                    <button type="button" onClick={() => setOfflineMinutes(offlineMinutes + 5)} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
+                                    <button type="button" onClick={() => setOfflineMinutes(offlineMinutes + 5)} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
                                         +
                                     </button>
                                 </div>
-                                <button type="submit" className="w-1/2 h-[56px] bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-0 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
+                                <button type="submit" className="w-full sm:w-1/2 h-12 sm:h-[56px] bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-0 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
                                     ADD TIME
                                 </button>
                             </div>
@@ -177,27 +177,27 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                     </div>
                 </div>
 
-                <div className="stagger-item lg:col-span-7 bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex flex-col h-full shadow-xl" style={{ animationDelay: '0.2s' }}>
-                    <div className="shrink-0 mb-8">
-                        <h3 className="font-bold text-2xl text-[var(--text)] flex items-center gap-3">
-                            <ShieldAlert className="w-7 h-7 text-[rgb(var(--a1))] drop-shadow-[0_0_8px_rgba(var(--a1),0.4)]" />
+                <div className="stagger-item lg:col-span-7 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col h-full shadow-2xl min-h-[400px]" style={{ animationDelay: '0.2s' }}>
+                    <div className="shrink-0 mb-6 sm:mb-8">
+                        <h3 className="font-bold text-xl sm:text-2xl text-[var(--text)] flex items-center gap-2 sm:gap-3">
+                            <ShieldAlert className="w-6 h-6 sm:w-7 sm:h-7 text-[rgb(var(--a1))] drop-shadow-[0_0_8px_rgba(var(--a1),0.4)] shrink-0" />
                             Rule Builder
                         </h3>
-                        <p className="text-[var(--text)] opacity-60 mt-2 font-medium">Target specific applications for strict blocking or daily allowance tracking.</p>
+                        <p className="text-sm sm:text-base text-[var(--text)] opacity-60 mt-2 font-medium">Target specific applications for strict blocking or daily allowance tracking.</p>
                     </div>
 
                     <div className="flex flex-col gap-6 shrink-0">
                         <div className="flex gap-2 p-1.5 bg-[var(--bg)] rounded-xl w-fit border border-[var(--panel-border)] shadow-inner">
-                            <button onClick={() => setRuleType('block')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${ruleType === 'block' ? 'bg-[rgb(var(--a2))] text-white shadow-[0_0_15px_rgba(var(--a2),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>
+                            <button onClick={() => setRuleType('block')} className={`px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${ruleType === 'block' ? 'bg-[rgb(var(--a2))] text-white shadow-[0_0_15px_rgba(var(--a2),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>
                                 Hard Block
                             </button>
-                            <button onClick={() => setRuleType('timer')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${ruleType === 'timer' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>
+                            <button onClick={() => setRuleType('timer')} className={`px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${ruleType === 'timer' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-[var(--text)] opacity-50 hover:opacity-100'}`}>
                                 Daily Limit
                             </button>
                         </div>
 
                         <form onSubmit={handleSubmit} className="flex gap-3 relative z-30">
-                            <div className="relative flex-grow flex gap-2">
+                            <div className="relative flex-grow flex flex-col sm:flex-row gap-2 sm:gap-3">
                                 <div className="relative flex-grow">
                                     <Input
                                         type="text"
@@ -208,7 +208,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                             setShowSuggestions(true);
                                         }}
                                         placeholder="Search detected apps..."
-                                        className="h-14 border-2 rounded-xl px-5 text-base font-bold flex-1"
+                                        className="h-12 sm:h-14 border-2 rounded-xl px-4 sm:px-5 text-sm sm:text-base font-bold flex-1"
                                     />
                                     {showSuggestions && filteredSuggestions.length > 0 && (
                                         <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col">
@@ -259,27 +259,27 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                     </div>
 
                     <div className="mt-8 flex flex-col flex-1 min-h-0">
-                        <div className="flex items-center justify-between px-2 mb-3 text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest">
+                        <div className="flex items-center justify-between px-1 sm:px-2 mb-3 text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest">
                             <span>Target App</span>
                             <span>Enforcement Rule</span>
                         </div>
                         <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
                             {Object.entries(blockList).map(([app, rule]) => (
-                                <div key={app} onContextMenu={(e) => onContextMenu?.(e, app)} className="flex items-center justify-between bg-[var(--bg)] border border-[var(--panel-border)] p-4 rounded-xl text-sm group transition-all hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg cursor-context-menu">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 flex items-center justify-center bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] p-1.5 flex-shrink-0 drop-shadow-md shadow-inner">
+                                <div key={app} onContextMenu={(e) => onContextMenu?.(e, app)} className="flex items-center justify-between bg-[var(--bg)] border border-[var(--panel-border)] p-3 sm:p-4 rounded-xl text-sm group transition-all hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg cursor-context-menu">
+                                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden pr-2">
+                                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[var(--panel-bg)] rounded-lg sm:rounded-xl border border-[var(--panel-border)] p-1 sm:p-1.5 flex-shrink-0 drop-shadow-md shadow-inner">
                                             {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
                                         </div>
-                                        <span className="text-[var(--text)] font-bold text-base tracking-wide">{app}</span>
+                                        <span className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide truncate">{app}</span>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                                         {rule === 'fully_blocked' ? (
-                                            <span className="text-xs text-[rgb(var(--a2))] bg-[rgba(var(--a2),0.1)] px-3 py-1.5 rounded-lg border border-[rgba(var(--a2),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a2),0.2)]">HARD BLOCKED</span>
+                                            <span className="text-[10px] sm:text-xs text-[rgb(var(--a2))] bg-[rgba(var(--a2),0.1)] px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-[rgba(var(--a2),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a2),0.2)]">HARD BLOCKED</span>
                                         ) : (
-                                            <span className="text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-3 py-1.5 rounded-lg border border-[rgba(var(--a1),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a1),0.2)]">{(rule / 60)}M DAILY LIMIT</span>
+                                            <span className="text-[10px] sm:text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-[rgba(var(--a1),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a1),0.2)]">{(rule / 60)}M DAILY LIMIT</span>
                                         )}
                                         <button onClick={() => handleRemoveApp(app)} className="text-[var(--text)] opacity-30 hover:opacity-100 hover:text-[rgb(var(--a2))] transition-colors cursor-pointer p-2 rounded-md hover:bg-[rgba(var(--a2),0.15)] group-hover:opacity-100">
-                                            <X className="w-5 h-5" strokeWidth={2.5} />
+                                            <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
                                         </button>
                                     </div>
                                 </div>
