@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const analyticsRef = useRef<HTMLDivElement>(null);
 
   const [dashboardSearch, setDashboardSearch] = useState<string>('');
+  const [sortMode, setSortMode] = useState<'duration' | 'alphabetical'>('duration');
 
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
@@ -157,15 +158,24 @@ const App: React.FC = () => {
   const CustomYAxisTick = ({ x, y, payload }: any) => {
     const val = payload?.value || '';
     const iconUrl = activeApp?.appIcons?.[val];
-    // FIX: Using native SVG tags instead of <foreignObject> so html2canvas doesn't crash during PDF Export!
+    const isActive = activeApp?.name === val;
     const text = val.length > 18 ? val.substring(0, 15) + '...' : val;
     return (
       <g transform={`translate(${x},${y})`} className="cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, val)}>
-        <text x="-40" y="4" textAnchor="end" fill="var(--text)" opacity="0.8" fontSize="13" fontWeight="bold">
+        <text x="-40" y="4" textAnchor="end" fill={isActive ? "rgb(16, 185, 129)" : "var(--text)"} opacity={isActive ? "1" : "0.8"} fontSize="13" fontWeight="bold">
           {text}
         </text>
         {iconUrl && (
           <image href={iconUrl} xlinkHref={iconUrl} x="-30" y="-12" width="20" height="20" />
+        )}
+        {isActive && (
+          <g transform="translate(-6, -2)">
+            <circle cx="0" cy="0" r="4" fill="rgba(16, 185, 129, 0.3)">
+              <animate attributeName="r" values="3;7;3" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="0" cy="0" r="3" fill="rgb(16, 185, 129)" />
+          </g>
         )}
       </g>
     );
@@ -176,7 +186,12 @@ const App: React.FC = () => {
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
     const displayTime = mostUsedApp ? formatTime(mostUsedApp.time) : "0m";
 
-    const filteredChartData = chartData.filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()));
+    const filteredChartData = chartData
+      .filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()))
+      .sort((a, b) => {
+        if (sortMode === 'duration') return b.time - a.time;
+        return a.name.localeCompare(b.name);
+      });
 
     return (
       <div ref={dashboardRef} className="flex flex-col h-full gap-8 max-w-6xl mx-auto pb-4 p-4 rounded-xl">
@@ -200,8 +215,14 @@ const App: React.FC = () => {
             </div>
             <div className="flex flex-col justify-center min-h-[80px] overflow-hidden">
               <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Most Used App</span>
-              <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate">
+              <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate flex items-center gap-3">
                 {displayAppName}
+                {activeApp?.name === displayAppName && (
+                  <span className="relative flex h-3 w-3 shrink-0" title="Currently Active">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -217,17 +238,32 @@ const App: React.FC = () => {
         <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[400px]" style={{ animationDelay: '0.25s' }}>
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <h2 className="text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
-            <div className="relative w-full md:w-64 print:hidden">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto print:hidden">
+              <div className="relative w-full sm:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search apps..."
+                  value={dashboardSearch}
+                  onChange={(e) => setDashboardSearch(e.target.value)}
+                  className="w-full bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner"
+                />
               </div>
-              <input
-                type="text"
-                placeholder="Search apps..."
-                value={dashboardSearch}
-                onChange={(e) => setDashboardSearch(e.target.value)}
-                className="w-full bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl pl-10 pr-4 py-2 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner"
-              />
+              <div className="relative w-full sm:w-auto">
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as 'duration' | 'alphabetical')}
+                  className="w-full bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl pl-4 pr-10 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner appearance-none cursor-pointer outline-none min-w-[160px]"
+                >
+                  <option value="duration">Sort by Duration</option>
+                  <option value="alphabetical">Sort A-Z</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-[var(--text)] opacity-50">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
@@ -451,7 +487,7 @@ const App: React.FC = () => {
   if (isLoading) {
     return (
       <div
-        className="h-screen flex items-center justify-center relative font-sans transition-colors duration-500"
+        className="h-screen flex items-center justify-center relative font-sans transition-colors duration-500 overflow-hidden"
         style={{ backgroundColor: activeTheme.bg, '--bg': activeTheme.bg, '--text': activeTheme.text, '--a1': activeTheme.a1, '--a2': activeTheme.a2, '--panel-bg': activeTheme.panelBg, '--panel-border': activeTheme.panelBorder } as React.CSSProperties}
       >
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.2] animate-pulse"></div>
