@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie } from 'recharts'
 import Controls from './components/Controls'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, RefreshCw, Check, X } from './components/Icons'
+import Toast from './components/Toast'
+import ContextMenu from './components/ContextMenu'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X } from './components/Icons'
 
 export const THEMES = {
   dark: { bg: '#0A0A0B', text: '#F8FAFC', a1: '56, 189, 248', a2: '139, 92, 246', panelBg: 'rgba(255,255,255,0.03)', panelBorder: 'rgba(255,255,255,0.08)' },
@@ -449,7 +451,7 @@ const App: React.FC = () => {
 
     // Visualizing the actual top application times in the trend chart
     const realTrendData = analyticsChartData.slice(0, 7).map(app => ({
-      name: app.name.length > 12 ? app.name.substring(0, 12) + '...' : app.name,
+      name: app.name,
       time: app.time
     }));
 
@@ -507,12 +509,11 @@ const App: React.FC = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
+                  <XAxis dataKey="name" tickFormatter={(val) => val.length > 12 ? val.substring(0, 12) + '...' : val} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 13, fontWeight: 'bold' }} tickLine={false} axisLine={false} dy={10} />
                   <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
                   <Tooltip
                     cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
-                    contentStyle={{ backgroundColor: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '12px', color: 'var(--text)', fontWeight: 'bold' }}
-                    formatter={(value: number) => [formatTime(value), 'Total Time']}
+                    content={<CustomTooltip />}
                   />
                   <Area 
                     type="monotone" 
@@ -871,41 +872,10 @@ const App: React.FC = () => {
       </main>
 
       {/* In-App Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-8 right-8 bg-gradient-to-br from-[rgb(var(--a1))] to-[rgb(var(--a2))] p-[1px] rounded-2xl shadow-2xl z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="bg-[var(--bg)] px-6 py-4 rounded-[15px] flex items-center gap-4 border border-[var(--panel-border)]">
-            <div className="w-8 h-8 rounded-full bg-[rgba(var(--a1),0.2)] flex items-center justify-center text-[rgb(var(--a1))]">
-              <Check className="w-5 h-5" strokeWidth={3} />
-            </div>
-            <div>
-              <h4 className="text-[var(--text)] font-bold text-sm tracking-wide">{toastMessage.title}</h4>
-              <p className="text-[var(--text)] opacity-60 text-xs font-medium mt-0.5">{toastMessage.message}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <Toast toastMessage={toastMessage} />
 
       {/* Custom Right-Click Context Menu */}
-      {contextMenu && (
-        <>
-          <div className="fixed inset-0 z-[100]" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}></div>
-          <div 
-            className="fixed z-[101] bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-1.5 rounded-xl shadow-2xl flex flex-col min-w-[170px] animate-in fade-in zoom-in-95 duration-200"
-            style={{ top: Math.min(contextMenu.y, window.innerHeight - 100), left: Math.min(contextMenu.x, window.innerWidth - 180) }}
-          >
-            <div className="px-3 py-2 text-[11px] font-black text-[var(--text)] opacity-50 uppercase tracking-widest border-b border-[var(--panel-border)] mb-1 truncate drop-shadow-sm">
-              {contextMenu.appName}
-            </div>
-            <button 
-              onClick={executeIconRefresh}
-              className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] hover:text-[rgb(var(--a1))] rounded-lg transition-colors text-left"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refresh Icon
-            </button>
-          </div>
-        </>
-      )}
+      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} />
 
       {/* Confirmation Modal */}
       {showClearConfirm && (
