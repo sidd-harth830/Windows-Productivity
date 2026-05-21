@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { GenericAppIcon, X, Clock, ShieldBan, ShieldAlert } from './Icons'
+import { Switch } from '../switch'
+import { Input } from '../input'
 
 export type BlockRule = 'fully_blocked' | number;
 
@@ -23,10 +25,9 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
     const [offlineActivity, setOfflineActivity] = useState<string>('');
     const [offlineMinutes, setOfflineMinutes] = useState<number>(30);
 
-    const handleToggleFocus = () => {
-        const nextState = !isFocusMode;
-        setIsFocusMode(nextState);
-        if (window.api && window.api.toggleFocusMode) window.api.toggleFocusMode(nextState);
+    const handleToggleFocus = (checked: boolean) => {
+        setIsFocusMode(checked);
+        if (window.api && window.api.toggleFocusMode) window.api.toggleFocusMode(checked);
     };
 
     const handleAddApp = (appToAdd: string) => {
@@ -108,9 +109,9 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 <p className="text-sm text-[var(--text)] opacity-60 leading-relaxed font-medium">Engage the native Windows blocker to enforce your custom rules and time limits globally.</p>
                             </div>
 
-                            <button onClick={handleToggleFocus} className={`w-16 h-9 flex flex-shrink-0 items-center rounded-full p-1 cursor-pointer transition-all duration-300 focus:outline-none mt-1 border ${isFocusMode ? 'bg-[rgb(var(--a2))] border-[rgba(var(--a2),0.8)] shadow-[0_0_25px_rgba(var(--a2),0.6)]' : 'bg-gray-400 dark:bg-gray-800 border-[var(--panel-border)]'}`}>
-                                <div className={`bg-white w-7 h-7 rounded-full shadow-md transform transition-transform duration-300 ${isFocusMode ? 'translate-x-7' : 'translate-x-0'}`} />
-                            </button>
+                            <div className="mt-1">
+                                <Switch checked={isFocusMode} onCheckedChange={handleToggleFocus} className="data-[state=checked]:bg-[rgb(var(--a2))]" />
+                            </div>
                         </div>
                     </div>
 
@@ -126,10 +127,10 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </div>
 
                         <form onSubmit={handleAddOfflineTime} className="flex flex-col gap-3 relative z-30 mt-2">
-                            <input
+                            <Input
                                 type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
                                 placeholder="Activity (e.g., Reading Book)"
-                                className="w-full bg-transparent border-2 border-[var(--panel-border)] rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:bg-[var(--panel-bg)] focus:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all font-bold" required
+                                className="h-14 border-2 rounded-xl px-5 text-base font-bold" required
                             />
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2 bg-transparent border-2 border-[rgba(var(--a1),0.5)] focus-within:bg-[var(--panel-bg)] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.2)] transition-all rounded-xl px-4 py-2 w-1/2">
@@ -179,7 +180,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
 
                         <form onSubmit={handleSubmit} className="flex gap-3 relative z-30">
                             <div className="relative flex-grow">
-                                <input
+                                <Input
                                     type="text"
                                     value={inputValue}
                                     onFocus={() => setShowSuggestions(true)}
@@ -188,7 +189,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                         setShowSuggestions(true);
                                     }}
                                     placeholder="Search detected apps..."
-                                    className="w-full bg-transparent border-2 border-[var(--panel-border)] rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:bg-[var(--panel-bg)] focus:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all font-bold"
+                                    className="h-14 border-2 rounded-xl px-5 text-base font-bold"
                                 />
                                 {showSuggestions && inputValue.length > 0 && filteredSuggestions.length > 0 && (
                                     <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--panel-bg)] backdrop-blur-2xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">

@@ -1,11 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie } from 'recharts'
 import Controls from './components/Controls'
-import Toast from './components/Toast'
 import ContextMenu from './components/ContextMenu'
 import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
+import { Switch } from './switch'
+import { Input } from './input'
+import { Popover, PopoverContent, PopoverTrigger } from './popover'
+import { Calendar } from './calendar'
+import { format } from 'date-fns'
+import { Toaster, toast } from 'sonner'
 
 interface WindowData {
   name: string; title: string; focusTime: number;
@@ -19,8 +24,6 @@ const App: React.FC = () => {
   const [lastActiveValidApp, setLastActiveValidApp] = useState<string | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [blockList, setBlockList] = useState<Record<string, 'fully_blocked' | number>>({});
-  const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState<boolean>(false);
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
@@ -80,9 +83,7 @@ const App: React.FC = () => {
   }, [trackSelf, trackSystemApps]);
 
   const showToast = (title: string, message: string) => {
-    setToastMessage({ title, message });
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 4000);
+    toast.success(title, { description: message });
   };
 
   const handleContextMenu = (e: React.MouseEvent, appName: string) => {
@@ -369,12 +370,12 @@ const App: React.FC = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <input
-                  type="text"
+                <Input
+                  type="search"
                   placeholder="Search apps..."
                   value={dashboardSearch}
                   onChange={(e) => setDashboardSearch(e.target.value)}
-                  className="w-full bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner"
+                  className="pl-10 h-[42px] rounded-xl"
                 />
               </div>
               <Select value={sortMode} onValueChange={(val) => setSortMode(val as 'duration' | 'alphabetical')}>
@@ -500,17 +501,27 @@ const App: React.FC = () => {
                 </SelectContent>
               </Select>
               <div className="w-px h-4 bg-[var(--panel-border)] mx-1"></div>
-              <input 
-                type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={(e) => { setAnalyticsStartDate(e.target.value); setDatePreset('custom'); }}
-                style={{ colorScheme: effectiveTheme === 'dark' ? 'dark' : 'light' }}
-                className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="bg-transparent text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[var(--panel-border)] px-3 py-1.5 rounded-md transition-colors text-left min-w-[110px]">
+                    {analyticsStartDate ? format(new Date(analyticsStartDate + "T00:00:00"), "MMM d, yyyy") : "Start"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={new Date(analyticsStartDate + "T00:00:00")} onSelect={(d) => { if(d) { setAnalyticsStartDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); setDatePreset('custom'); }}} initialFocus />
+                </PopoverContent>
+              </Popover>
               <span className="text-[var(--text)] opacity-40 font-bold text-xs tracking-widest px-1">TO</span>
-              <input 
-                type="date" value={analyticsEndDate} min={analyticsStartDate} max={todayStr} onChange={(e) => { setAnalyticsEndDate(e.target.value); setDatePreset('custom'); }}
-                style={{ colorScheme: effectiveTheme === 'dark' ? 'dark' : 'light' }}
-                className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="bg-transparent text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[var(--panel-border)] px-3 py-1.5 rounded-md transition-colors text-left min-w-[110px]">
+                    {analyticsEndDate ? format(new Date(analyticsEndDate + "T00:00:00"), "MMM d, yyyy") : "End"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={new Date(analyticsEndDate + "T00:00:00")} onSelect={(d) => { if(d) { setAnalyticsEndDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`); setDatePreset('custom'); }}} initialFocus />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
@@ -565,12 +576,12 @@ const App: React.FC = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <input
-                  type="text"
+                <Input
+                  type="search"
                   placeholder="Search apps..."
                   value={analyticsSearch}
                   onChange={(e) => setAnalyticsSearch(e.target.value)}
-                  className="w-full bg-[var(--bg)] border border-[var(--panel-border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] transition-all shadow-inner"
+                  className="pl-9 h-9 rounded-lg bg-[var(--bg)]"
                 />
               </div>
             </div>
@@ -679,9 +690,7 @@ const App: React.FC = () => {
                 <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include internal OS components like Windows Explorer and Search.</p>
               </div>
             </div>
-            <button onClick={() => setTrackSystemApps(!trackSystemApps)} className={`w-14 h-8 flex flex-shrink-0 items-center rounded-full p-1 cursor-pointer transition-all duration-300 focus:outline-none ${trackSystemApps ? 'bg-[rgb(var(--a1))] shadow-[0_0_15px_rgba(var(--a1),0.5)]' : 'bg-white/10'}`}>
-              <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${trackSystemApps ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
+            <Switch checked={trackSystemApps} onCheckedChange={setTrackSystemApps} />
           </div>
 
           <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
@@ -694,9 +703,7 @@ const App: React.FC = () => {
                 <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Include the time spent staring at this dashboard in your statistics.</p>
               </div>
             </div>
-            <button onClick={() => setTrackSelf(!trackSelf)} className={`w-14 h-8 flex flex-shrink-0 items-center rounded-full p-1 cursor-pointer transition-all duration-300 focus:outline-none ${trackSelf ? 'bg-[rgb(var(--a1))] shadow-[0_0_15px_rgba(var(--a1),0.5)]' : 'bg-white/10'}`}>
-              <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${trackSelf ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
+            <Switch checked={trackSelf} onCheckedChange={setTrackSelf} />
           </div>
         </div>
 
@@ -885,8 +892,8 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* In-App Toast Notification */}
-      <Toast toastMessage={toastMessage} />
+      {/* Shadcn Sonner Toaster */}
+      <Toaster theme={effectiveTheme as any} toastOptions={{ style: { background: 'var(--panel-bg)', color: 'var(--text)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }, className: 'font-sans font-medium' }} />
 
       {/* Custom Right-Click Context Menu */}
       <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} />

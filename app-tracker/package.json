@@ -25,9 +25,14 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-select": "^2.1.2",
+    "@radix-ui/react-popover": "^1.1.2",
+    "@radix-ui/react-switch": "^1.1.1",
     "active-win": "^8.2.1",
     "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "react-day-picker": "^8.10.1",
     "recharts": "^3.8.1",
+    "sonner": "^1.5.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
