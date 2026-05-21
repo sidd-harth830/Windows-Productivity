@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState<boolean>(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; appName: string } | null>(null);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -54,8 +55,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (activeTab === 'analytics' && window.api && (window.api as any).getHistory) {
+      if (Object.keys(historyData).length === 0) setIsAnalyticsLoading(true);
       (window.api as any).getHistory().then((data: any) => {
         setHistoryData(data);
+        setIsAnalyticsLoading(false);
       });
     }
   }, [activeTab]);
@@ -399,6 +402,47 @@ const App: React.FC = () => {
   };
 
   const renderAnalytics = () => {
+    if (isAnalyticsLoading) {
+      return (
+        <div className="flex flex-col h-full gap-8 max-w-6xl mx-auto w-full pb-4 p-4 rounded-xl animate-in fade-in duration-300">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
+            <div className="flex flex-col gap-3">
+              <div className="h-12 w-72 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-2xl animate-pulse"></div>
+              <div className="h-5 w-48 bg-[var(--panel-bg)] rounded-lg animate-pulse opacity-50"></div>
+            </div>
+            <div className="h-10 w-80 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl animate-pulse"></div>
+          </div>
+          <div className="bg-[var(--panel-bg)] backdrop-blur-2xl border border-[var(--panel-border)] p-8 rounded-3xl flex-1 flex flex-col shadow-xl min-h-[350px]">
+            <div className="h-6 w-56 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50 mb-6"></div>
+            <div className="flex-1 w-full bg-[var(--panel-border)] rounded-2xl animate-pulse opacity-20"></div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
+            <div className="lg:col-span-8 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ml-2">
+                <div className="h-6 w-48 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50"></div>
+                <div className="h-9 w-56 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-lg animate-pulse"></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="bg-[var(--panel-bg)] border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--panel-border)] animate-pulse opacity-30 shrink-0"></div>
+                    <div className="flex-1">
+                      <div className="h-3 w-20 bg-[var(--panel-border)] rounded animate-pulse opacity-40 mb-3"></div>
+                      <div className="h-6 w-32 bg-[var(--panel-border)] rounded animate-pulse opacity-60"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="lg:col-span-4 bg-[var(--panel-bg)] border border-[var(--panel-border)] p-6 rounded-3xl shadow-lg flex flex-col items-center min-h-[250px]">
+              <div className="h-6 w-40 bg-[var(--panel-border)] rounded-lg animate-pulse opacity-50 mb-8 mt-2"></div>
+              <div className="w-40 h-40 rounded-full bg-[var(--panel-border)] animate-pulse opacity-20"></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // Visualizing the actual top application times in the trend chart
     const realTrendData = analyticsChartData.slice(0, 7).map(app => ({
       name: app.name.length > 12 ? app.name.substring(0, 12) + '...' : app.name,
