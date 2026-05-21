@@ -90,15 +90,6 @@ function checkDateRoll() {
   }
 }
 
-// INSTANT PRE-FETCH CACHE
-for (const [appName, exePath] of Object.entries(appPaths)) {
-  if (exePath) {
-    app.getFileIcon(exePath, { size: 'large' })
-      .then(icon => appIcons[appName] = icon.toDataURL())
-      .catch(() => {}); 
-  }
-}
-
 ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => isFocusModeEnabled = enabled);
 ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' | number>) => currentBlockList = rules);
 ipcMain.on('update-preferences', (_event, prefs) => {
@@ -311,7 +302,7 @@ async function startTracking(mainWindow: BrowserWindow) {
   try {
     const activeWin = (await import('active-win')).default;
     
-    trackingInterval = setInterval(async () => {
+    const track = async () => {
       try {
         const windowInfo = await activeWin();
         if (windowInfo && mainWindow) {
@@ -413,7 +404,10 @@ async function startTracking(mainWindow: BrowserWindow) {
 
         }
       } catch (err) {}
-    }, 2000); 
+    };
+
+    await track(); // Instantly track on startup to bypass the 2-second UI loading delay
+    trackingInterval = setInterval(track, 2000);
   } catch (error) {}
 }
 
@@ -455,6 +449,16 @@ function createMiniPlayerWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');
+  
+  // INSTANT PRE-FETCH CACHE (Moved here to ensure Electron is fully initialized)
+  for (const [appName, exePath] of Object.entries(appPaths)) {
+    if (exePath) {
+      app.getFileIcon(exePath, { size: 'large' })
+        .then(icon => appIcons[appName] = icon.toDataURL())
+        .catch(() => {}); 
+    }
+  }
+
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window));
 
   const mainWindow = createWindow();
