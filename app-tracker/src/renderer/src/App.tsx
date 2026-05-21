@@ -4,6 +4,8 @@ import Controls from './components/Controls'
 import Toast from './components/Toast'
 import ContextMenu from './components/ContextMenu'
 import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X } from './components/Icons'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 
 interface WindowData {
   name: string; title: string; focusTime: number;
@@ -375,19 +377,15 @@ const App: React.FC = () => {
                   className="w-full bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl pl-10 pr-4 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner"
                 />
               </div>
-              <div className="relative w-full sm:w-auto">
-                <select
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value as 'duration' | 'alphabetical')}
-                  className="w-full bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl pl-4 pr-10 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner appearance-none cursor-pointer outline-none min-w-[160px]"
-                >
-                  <option value="duration">Sort by Duration</option>
-                  <option value="alphabetical">Sort A-Z</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-[var(--text)] opacity-50">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
-              </div>
+              <Select value={sortMode} onValueChange={(val) => setSortMode(val as 'duration' | 'alphabetical')}>
+                <SelectTrigger className="w-full sm:w-[180px] bg-[var(--panel-bg)] border-[var(--panel-border)] rounded-xl px-4 py-5 text-sm text-[var(--text)] font-medium focus:ring-1 focus:ring-[rgb(var(--a1))] focus:border-[rgb(var(--a1))] transition-all shadow-inner outline-none">
+                  <SelectValue placeholder="Sort apps" />
+                </SelectTrigger>
+                <SelectContent className="bg-[var(--panel-bg)] border-[var(--panel-border)] text-[var(--text)] backdrop-blur-3xl rounded-xl">
+                  <SelectItem value="duration" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Sort by Duration</SelectItem>
+                  <SelectItem value="alphabetical" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Sort A-Z</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
@@ -489,17 +487,18 @@ const App: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <span className="text-[var(--text)] opacity-60 text-sm font-bold">Date Range:</span>
             <div className="flex items-center gap-2 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-3 py-1.5 shadow-inner">
-              <select
-                value={datePreset}
-                onChange={(e) => handlePresetChange(e.target.value)}
-                className="bg-transparent text-sm text-[rgb(var(--a1))] font-bold focus:outline-none cursor-pointer outline-none appearance-none pr-2 relative"
-              >
-                <option value="today" className="text-[var(--text)] bg-[var(--bg)]">Today</option>
-                <option value="last7" className="text-[var(--text)] bg-[var(--bg)]">Last 7 Days</option>
-                <option value="last30" className="text-[var(--text)] bg-[var(--bg)]">Last 30 Days</option>
-                <option value="all" className="text-[var(--text)] bg-[var(--bg)]">All Time</option>
-                <option value="custom" className="text-[var(--text)] bg-[var(--bg)]" disabled>Custom</option>
-              </select>
+              <Select value={datePreset} onValueChange={handlePresetChange}>
+                <SelectTrigger className="bg-transparent border-none text-[rgb(var(--a1))] text-sm font-bold shadow-none focus:ring-0 p-0 h-auto gap-1">
+                  <SelectValue placeholder="Select Date" />
+                </SelectTrigger>
+                <SelectContent className="bg-[var(--panel-bg)] border-[var(--panel-border)] text-[var(--text)] backdrop-blur-3xl rounded-xl">
+                  <SelectItem value="today" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Today</SelectItem>
+                  <SelectItem value="last7" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Last 7 Days</SelectItem>
+                  <SelectItem value="last30" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Last 30 Days</SelectItem>
+                  <SelectItem value="all" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">All Time</SelectItem>
+                  <SelectItem value="custom" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]" disabled>Custom</SelectItem>
+                </SelectContent>
+              </Select>
               <div className="w-px h-4 bg-[var(--panel-border)] mx-1"></div>
               <input 
                 type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={(e) => { setAnalyticsStartDate(e.target.value); setDatePreset('custom'); }}
@@ -893,30 +892,27 @@ const App: React.FC = () => {
       <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} />
 
       {/* Confirmation Modal */}
-      {showClearConfirm && (
-        <>
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] animate-in fade-in duration-200" onClick={() => setShowClearConfirm(false)}></div>
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-8 rounded-3xl shadow-2xl flex flex-col gap-6 min-w-[400px] animate-in zoom-in-95 duration-200">
-            <div>
-              <h3 className="text-xl font-bold text-red-400 mb-2 flex items-center gap-3">
-                <ShieldAlert className="w-6 h-6" />
-                Clear All Data?
-              </h3>
-              <p className="text-[var(--text)] opacity-70 text-sm font-medium leading-relaxed max-w-sm">
-                This will permanently delete all recorded application history and offline logs. This action cannot be undone. Are you absolutely sure?
-              </p>
-            </div>
-            <div className="flex justify-end gap-3 mt-2">
-              <button onClick={() => setShowClearConfirm(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-[var(--text)] opacity-70 hover:opacity-100 hover:bg-[var(--panel-border)] transition-all cursor-pointer">
-                Cancel
-              </button>
-              <button onClick={confirmClearData} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-red-500 text-white hover:brightness-125 shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer">
-                Yes, Clear Data
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent className="bg-[var(--panel-bg)] backdrop-blur-3xl border-[var(--panel-border)] p-8 rounded-3xl shadow-2xl flex flex-col gap-6 min-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-red-400 mb-2 flex items-center gap-3">
+              <ShieldAlert className="w-6 h-6" />
+              Clear All Data?
+            </DialogTitle>
+            <DialogDescription className="text-[var(--text)] opacity-70 text-sm font-medium leading-relaxed max-w-sm">
+              This will permanently delete all recorded application history and offline logs. This action cannot be undone. Are you absolutely sure?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-3 mt-2">
+            <button onClick={() => setShowClearConfirm(false)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-[var(--text)] opacity-70 hover:opacity-100 hover:bg-[var(--panel-border)] transition-all cursor-pointer">
+              Cancel
+            </button>
+            <button onClick={confirmClearData} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-red-500 text-white hover:brightness-125 shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all cursor-pointer">
+              Yes, Clear Data
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <style>{`
         .stagger-item {
