@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X } from './components/Icons'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { Switch } from './switch'
@@ -29,6 +29,9 @@ const App: React.FC = () => {
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState<boolean>(false);
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; appName: string } | null>(null);
+  const [focusSessionActive, setFocusSessionActive] = useState<boolean>(false);
+  const [focusSessionMinutes, setFocusSessionMinutes] = useState<number>(25);
+  const [focusSessionTimeLeft, setFocusSessionTimeLeft] = useState<number>(25 * 60);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
   const analyticsRef = useRef<HTMLDivElement>(null);
@@ -134,11 +137,45 @@ const App: React.FC = () => {
     }
   }, [activeApp?.name, trackSelf, trackSystemApps]);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (focusSessionActive && focusSessionTimeLeft > 0) {
+      interval = setInterval(() => setFocusSessionTimeLeft(prev => prev - 1), 1000);
+    } else if (focusSessionTimeLeft === 0 && focusSessionActive) {
+      setFocusSessionActive(false);
+      showToast('Session Complete', 'Great job! Take a short break to recharge.');
+    }
+    return () => clearInterval(interval);
+  }, [focusSessionActive, focusSessionTimeLeft]);
+
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
+  };
+
+  const formatCountdown = (totalSeconds: number) => {
+    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const toggleFocusSession = () => {
+    if (!focusSessionActive) {
+      setFocusSessionActive(true);
+      setFocusSessionTimeLeft(focusSessionMinutes * 60);
+      if (!isFocusMode) {
+        setIsFocusMode(true);
+        if (window.api && window.api.toggleFocusMode) window.api.toggleFocusMode(true);
+        showToast('Deep Focus Engaged', 'Focus Mode auto-enabled to protect your session.');
+      } else {
+        showToast('Deep Focus Started', 'Stay on task. You got this!');
+      }
+    } else {
+      setFocusSessionActive(false);
+      showToast('Deep Focus Stopped', 'Session manually ended.');
+    }
   };
 
   const handleExportCsv = async () => {
@@ -325,6 +362,19 @@ const App: React.FC = () => {
     return Math.round((productiveTime / totalTime) * 100);
   };
 
+  const calculateProductivityScoreForDay = (dayData: Record<string, number>) => {
+    let prodTime = 0;
+    let total = 0;
+    Object.entries(dayData).forEach(([app, time]) => {
+      total += time;
+      const cat = categorizeApp(app);
+      if (cat === 'Development' || cat === 'Productivity') prodTime += time;
+      else if (cat === 'Communication') prodTime += (time * 0.5);
+    });
+    if (total === 0) return 0;
+    return Math.round((prodTime / total) * 100);
+  };
+
   const categoryDataMap: Record<string, number> = {};
   analyticsChartData.forEach(app => {
     const cat = categorizeApp(app.name);
@@ -395,72 +445,111 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]" style={{ animationDelay: '0.25s' }}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4">
-            <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto print:hidden">
-              <div className="relative w-full md:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
+          <div className="lg:col-span-8 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4">
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto print:hidden">
+                <div className="relative w-full md:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                  </div>
+                  <Input
+                    type="search"
+                    placeholder="Search apps..."
+                    value={dashboardSearch}
+                    onChange={(e) => setDashboardSearch(e.target.value)}
+                    className="pl-10 h-[42px] rounded-xl"
+                  />
                 </div>
-                <Input
-                  type="search"
-                  placeholder="Search apps..."
-                  value={dashboardSearch}
-                  onChange={(e) => setDashboardSearch(e.target.value)}
-                  className="pl-10 h-[42px] rounded-xl"
-                />
+                <Select value={sortMode} onValueChange={(val) => setSortMode(val as 'duration' | 'alphabetical')}>
+                  <SelectTrigger className="w-full sm:w-[180px] bg-[var(--panel-bg)] border-[var(--panel-border)] rounded-xl px-4 py-5 text-sm text-[var(--text)] font-medium focus:ring-1 focus:ring-[rgb(var(--a1))] focus:border-[rgb(var(--a1))] transition-all shadow-inner outline-none">
+                    <SelectValue placeholder="Sort apps" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[var(--panel-bg)] border-[var(--panel-border)] text-[var(--text)] backdrop-blur-3xl rounded-xl">
+                    <SelectItem value="duration" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Sort by Duration</SelectItem>
+                    <SelectItem value="alphabetical" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Sort A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={sortMode} onValueChange={(val) => setSortMode(val as 'duration' | 'alphabetical')}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-[var(--panel-bg)] border-[var(--panel-border)] rounded-xl px-4 py-5 text-sm text-[var(--text)] font-medium focus:ring-1 focus:ring-[rgb(var(--a1))] focus:border-[rgb(var(--a1))] transition-all shadow-inner outline-none">
-                  <SelectValue placeholder="Sort apps" />
-                </SelectTrigger>
-                <SelectContent className="bg-[var(--panel-bg)] border-[var(--panel-border)] text-[var(--text)] backdrop-blur-3xl rounded-xl">
-                  <SelectItem value="duration" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Sort by Duration</SelectItem>
-                  <SelectItem value="alphabetical" className="cursor-pointer focus:bg-[rgba(var(--a1),0.15)] focus:text-[var(--text)]">Sort A-Z</SelectItem>
-                </SelectContent>
-              </Select>
+            </div>
+            <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
+              {filteredChartData.length > 0 ? (
+                <div style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
+                      <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
+                      <Bar
+                        dataKey="time"
+                        radius={[0, 8, 8, 0]}
+                        barSize={32}
+                        isAnimationActive={true}
+                        animationDuration={1200}
+                        animationEasing="ease-out"
+                        activeBar={{ stroke: 'rgb(var(--a1))', strokeWidth: 2, fill: 'rgba(var(--a1), 0.1)', filter: 'drop-shadow(0 0 8px rgba(var(--a1), 0.5))', cursor: 'pointer' }}
+                      >
+                        {filteredChartData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
+                  <NoData className="w-64 h-64 opacity-40" />
+                  <p className="font-bold tracking-widest uppercase text-sm mt-4">No Application Data</p>
+                  <p className="text-xs mt-1">Start using some apps to see your footprint.</p>
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex-1 w-full min-h-0 min-w-0 pr-4 overflow-y-auto custom-scrollbar">
-            {filteredChartData.length > 0 ? (
-              <div style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
 
-                    <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
-
-                    <Bar
-                      dataKey="time"
-                      radius={[0, 8, 8, 0]}
-                      barSize={32}
-                      isAnimationActive={true}
-                      animationDuration={1200}
-                      animationEasing="ease-out"
-                      activeBar={{
-                        stroke: 'rgb(var(--a1))',
-                        strokeWidth: 2,
-                        fill: 'rgba(var(--a1), 0.1)',
-                        filter: 'drop-shadow(0 0 8px rgba(var(--a1), 0.5))',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {filteredChartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+          <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col items-center justify-center relative overflow-hidden hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
+            {focusSessionActive && <div className="absolute inset-0 bg-gradient-to-b from-[rgba(var(--a1),0.1)] to-transparent animate-pulse pointer-events-none"></div>}
+            
+            <div className="flex items-center gap-2 mb-6 z-10">
+              <Flame className={`w-6 h-6 sm:w-7 sm:h-7 ${focusSessionActive ? 'text-[rgb(var(--a1))]' : 'text-[var(--text)] opacity-50'}`} />
+              <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] tracking-wide">Deep Focus</h3>
+            </div>
+            
+            <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center shrink-0 mb-6 z-10">
+              <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_12px_rgba(var(--a1),0.3)]">
+                <circle cx="50" cy="50" r="45" stroke="var(--panel-border)" strokeWidth="4" fill="transparent" />
+                <circle cx="50" cy="50" r="45" stroke="rgb(var(--a1))" strokeWidth="6" fill="transparent" strokeDasharray="282.7" strokeDashoffset={282.7 - ((focusSessionActive ? focusSessionTimeLeft / (focusSessionMinutes * 60) : 1) * 282.7)} className="transition-all duration-1000 linear" strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl sm:text-5xl font-black text-[var(--text)] tracking-tight tabular-nums">
+                  {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
+                </span>
+                {!focusSessionActive && (
+                  <div className="flex items-center gap-4 mt-3">
+                    <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="text-[var(--text)] opacity-50 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-colors font-bold text-xl px-2">-</button>
+                    <span className="text-[var(--text)] opacity-40 text-[10px] font-bold tracking-widest uppercase">MIN</span>
+                    <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="text-[var(--text)] opacity-50 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-colors font-bold text-xl px-2">+</button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
-                <NoData className="w-64 h-64 opacity-40" />
-                <p className="font-bold tracking-widest uppercase text-sm mt-4">No Application Data</p>
-                <p className="text-xs mt-1">Start using some apps to see your footprint.</p>
-              </div>
-            )}
+            </div>
+            
+            <button 
+              onClick={toggleFocusSession} 
+              className={`z-10 flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-full font-bold text-xs sm:text-sm tracking-widest transition-all shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] hover:bg-[rgba(var(--a2),0.1)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
+            >
+              {focusSessionActive ? (
+                <>
+                  <Square className="w-4 h-4" />
+                  END SESSION
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 fill-current" />
+                  START FOCUS
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -519,12 +608,28 @@ const App: React.FC = () => {
 
     const getInsight = () => {
       if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";
+      
+      const last7Days = Object.keys(historyData).sort().slice(-7);
+      let avgScore = 0;
+      if (last7Days.length > 0) {
+        const totalScore = last7Days.reduce((sum, d) => sum + calculateProductivityScoreForDay(historyData[d]), 0);
+        avgScore = Math.round(totalScore / last7Days.length);
+      }
+      
+      const currentScore = calculateProductivityScore(dashboardData);
+      let velocityStr = "";
+      if (avgScore > 0) {
+        const diff = currentScore - avgScore;
+        if (diff > 0) velocityStr = ` Your score is +${diff}% above your 7-day average!`;
+        else if (diff < 0) velocityStr = ` Your score is ${diff}% compared to your 7-day average.`;
+      }
+
       const topCat = pieData[0];
       const percent = Math.round((topCat.value / totalCategoryTime) * 100);
       if (topCat.name === 'Entertainment' || topCat.name === 'Browsing') {
-        return `You've spent ${percent}% of your tracked time on ${topCat.name}. Consider enabling Focus Mode to stay on track.`;
+        return `You've spent ${percent}% of your tracked time on ${topCat.name}.${velocityStr} Consider enabling Focus Mode to stay on track.`;
       }
-      return `Great job! Your primary focus was ${topCat.name}, accounting for ${percent}% of your tracked time.`;
+      return `Great job! Your primary focus was ${topCat.name}, accounting for ${percent}% of your tracked time.${velocityStr}`;
     };
 
     return (
