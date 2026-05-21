@@ -12,14 +12,14 @@ const api = {
   // NEW: Save CSV
   saveCsv: (content: string) => ipcRenderer.invoke('save-csv', content),
 
-  // NEW: Open Usage Data
-  openUsageData: () => ipcRenderer.invoke('open-usage-data'),
-
   // NEW: Add Offline Time
   addOfflineTime: (activityName: string, minutes: number) => ipcRenderer.invoke('add-offline-time', activityName, minutes),
 
   // NEW: Remove App Usage
-  removeAppUsage: (appName: string) => ipcRenderer.invoke('remove-app-usage', appName)
+  removeAppUsage: (appName: string) => ipcRenderer.invoke('remove-app-usage', appName),
+
+  // NEW: Refresh App Icon
+  refreshAppIcon: (appName: string) => ipcRenderer.invoke('refresh-app-icon', appName)
 }
 
 if (process.contextIsolated) {

@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
+import crypto from 'crypto'
 import { exec } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -29,8 +30,35 @@ let halfWarningSent: Record<string, boolean> = {};
 let trackSystemApps = false;
 let trackSelf = false;
 
-if (fs.existsSync(dataPath)) { try { appUsage = JSON.parse(fs.readFileSync(dataPath, 'utf-8')); } catch (e) { } }
-if (fs.existsSync(pathsDataPath)) { try { appPaths = JSON.parse(fs.readFileSync(pathsDataPath, 'utf-8')); } catch (e) { } }
+// --- ENCRYPTION ENGINE ---
+const SECRET_KEY = crypto.scryptSync('forgepulse-secure-key-2026', 'salt', 32);
+const ALGORITHM = 'aes-256-cbc';
+
+function encryptData(data: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(ALGORITHM, SECRET_KEY, iv);
+  let encrypted = cipher.update(data, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+function decryptData(data: string): string {
+  const parts = data.split(':');
+  const iv = Buffer.from(parts[0], 'hex');
+  const decipher = crypto.createDecipheriv(ALGORITHM, SECRET_KEY, iv);
+  let decrypted = decipher.update(parts[1], 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+function safeReadData(path: string): any {
+  if (!fs.existsSync(path)) return {};
+  const raw = fs.readFileSync(path, 'utf-8');
+  try { return JSON.parse(decryptData(raw)); } catch { try { return JSON.parse(raw); } catch { return {}; } }
+}
+
+appUsage = safeReadData(dataPath);
+appPaths = safeReadData(pathsDataPath);
 
 // INSTANT PRE-FETCH CACHE
 for (const [appName, exePath] of Object.entries(appPaths)) {
@@ -62,21 +90,12 @@ ipcMain.handle('save-csv', async (_event, csvContent: string) => {
   return false;
 });
 
-ipcMain.handle('open-usage-data', async () => {
-  try {
-    await shell.openPath(dataPath);
-    return true;
-  } catch (e) {
-    return false;
-  }
-});
-
 ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes: number) => {
   try {
     const displayAppName = activityName.trim() + ' (Offline)';
     const seconds = minutes * 60;
     appUsage[displayAppName] = (appUsage[displayAppName] || 0) + seconds;
-    await fs.promises.writeFile(dataPath, JSON.stringify(appUsage));
+    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(appUsage)));
     lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
     
     // Force an instant update to the frontend immediately!
@@ -85,7 +104,7 @@ ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes:
         name: lastApp || 'Desktop',
         title: '',
         focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
-        allUsage: appUsage,
+        allUsage: { ...appUsage }, // Forced clone ensures React triggers Dashboard rerender
         appIcons: appIcons
       });
     });
@@ -99,7 +118,7 @@ ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes:
 ipcMain.handle('remove-app-usage', async (_event, appName: string) => {
   try {
     delete appUsage[appName];
-    await fs.promises.writeFile(dataPath, JSON.stringify(appUsage));
+    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(appUsage)));
     lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
     
     // Force an instant update to the frontend immediately!
@@ -108,7 +127,7 @@ ipcMain.handle('remove-app-usage', async (_event, appName: string) => {
         name: lastApp || 'Desktop',
         title: '',
         focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
-        allUsage: appUsage,
+        allUsage: { ...appUsage },
         appIcons: appIcons
       });
     });
@@ -116,6 +135,30 @@ ipcMain.handle('remove-app-usage', async (_event, appName: string) => {
   } catch (e) {
     return false;
   }
+});
+
+ipcMain.handle('refresh-app-icon', async (_event, appName: string) => {
+  try {
+    const exePath = appPaths[appName];
+    if (exePath) {
+      const nativeIcon = await app.getFileIcon(exePath, { size: 'large' });
+      appIcons[appName] = nativeIcon.toDataURL();
+      await fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths)));
+      
+      // Force UI Update
+      BrowserWindow.getAllWindows().forEach(win => {
+        win.webContents.send('window-update', {
+          name: lastApp || 'Desktop',
+          title: '',
+          focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
+          allUsage: { ...appUsage },
+          appIcons: { ...appIcons }
+        });
+      });
+      return true;
+    }
+    return false;
+  } catch (e) { return false; }
 });
 
 function cleanAppName(rawName: string): string {
@@ -141,8 +184,9 @@ async function startTracking(mainWindow: BrowserWindow) {
         const windowInfo = await activeWin();
         if (windowInfo && mainWindow) {
           
-          const rawName = windowInfo.owner.name; 
-          const rawPath = windowInfo.owner.path || '';
+          const owner = windowInfo.owner || ({} as any);
+          const rawName = owner.name || windowInfo.title || 'Unknown Process'; 
+          const rawPath = owner.path || '';
           const actualExe = rawPath.split('\\').pop()?.toLowerCase() || rawName.toLowerCase();
           const displayAppName = cleanAppName(rawName);
 
@@ -156,7 +200,7 @@ async function startTracking(mainWindow: BrowserWindow) {
               const nativeIcon = await app.getFileIcon(rawPath, { size: 'large' });
               appIcons[displayAppName] = nativeIcon.toDataURL(); 
               appPaths[displayAppName] = rawPath;
-              fs.promises.writeFile(pathsDataPath, JSON.stringify(appPaths)).catch(()=>{});
+              fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths))).catch(()=>{});
             } catch (e) {}
           }
 
@@ -205,7 +249,8 @@ async function startTracking(mainWindow: BrowserWindow) {
           if (shouldTrack) {
             appUsage[displayAppName] = (appUsage[displayAppName] || 0) + timeDiff;
             if (tray) {
-              tray.setToolTip(`ForgePulse\nActive: ${displayAppName} (${formatTime(appUsage[displayAppName])})`);
+              const tip = `ForgePulse\nActive: ${displayAppName} (${formatTime(appUsage[displayAppName])})`;
+              tray.setToolTip(tip.length > 127 ? tip.substring(0, 124) + '...' : tip);
             }
           } else if (tray) {
             tray.setToolTip('ForgePulse - Tracking System Process');
@@ -226,7 +271,7 @@ async function startTracking(mainWindow: BrowserWindow) {
               appIcons: appIcons
             });
 
-            fs.promises.writeFile(dataPath, JSON.stringify(liveUsageData)).catch(()=>{});
+            fs.promises.writeFile(dataPath, encryptData(JSON.stringify(liveUsageData))).catch(()=>{});
             lastUiUpdate = now;
           }
 
