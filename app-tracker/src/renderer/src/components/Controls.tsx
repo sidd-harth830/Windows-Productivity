@@ -199,7 +199,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                     placeholder="Search detected apps..."
                                     className="h-14 border-2 rounded-xl px-5 text-base font-bold"
                                 />
-                                {showSuggestions && inputValue.length > 0 && filteredSuggestions.length > 0 && (
+                                {showSuggestions && filteredSuggestions.length > 0 && (
                                     <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">
                                         {filteredSuggestions.map(app => (
                                             <button

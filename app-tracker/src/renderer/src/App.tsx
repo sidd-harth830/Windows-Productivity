@@ -987,7 +987,11 @@ const App: React.FC = () => {
             setIsFocusMode={setIsFocusMode}
             blockList={blockList}
             setBlockList={setBlockList}
-            availableApps={activeApp ? Object.keys(activeApp.appIcons).filter(appName => isAppValid(appName)) : []}
+            availableApps={Array.from(new Set([
+              ...Object.values(historyData).flatMap(day => Object.keys(day)),
+              ...(activeApp ? Object.keys(activeApp.allUsage) : []),
+              ...(activeApp ? Object.keys(activeApp.appIcons) : [])
+            ])).filter(isAppValid).sort((a, b) => a.localeCompare(b))}
             allUsage={activeApp ? activeApp.allUsage : {}}
             appIcons={activeApp ? activeApp.appIcons : {}}
             onContextMenu={handleContextMenu}
