@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw } from './components/Icons'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw, Maximize2 } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { Switch } from './switch'
@@ -53,6 +53,8 @@ const App: React.FC = () => {
   const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(() => parseInt(localStorage.getItem('dailyFocusGoal') || '4', 10));
   const [hiddenApps, setHiddenApps] = useState<string[]>(() => JSON.parse(localStorage.getItem('hiddenApps') || '[]'));
   const [showIgnoredApps, setShowIgnoredApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('showIgnoredApps') || 'false'));
+  const [stopTrackingOnIdle, setStopTrackingOnIdle] = useState<boolean>(() => JSON.parse(localStorage.getItem('stopTrackingOnIdle') || 'true'));
+  const [autoStart, setAutoStart] = useState<boolean>(false);
 
   const effectiveTheme = themePref === 'system' ? systemTheme : themePref;
 
@@ -62,6 +64,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('dailyFocusGoal', dailyFocusGoal.toString()); }, [dailyFocusGoal]);
   useEffect(() => { localStorage.setItem('hiddenApps', JSON.stringify(hiddenApps)); }, [hiddenApps]);
   useEffect(() => { localStorage.setItem('showIgnoredApps', JSON.stringify(showIgnoredApps)); }, [showIgnoredApps]);
+  useEffect(() => { localStorage.setItem('stopTrackingOnIdle', JSON.stringify(stopTrackingOnIdle)); }, [stopTrackingOnIdle]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -90,9 +93,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (window.api && window.api.updatePreferences) {
-      window.api.updatePreferences({ trackSelf, trackSystemApps, hiddenApps });
+      window.api.updatePreferences({ trackSelf, trackSystemApps, hiddenApps, stopTrackingOnIdle });
     }
-  }, [trackSelf, trackSystemApps, hiddenApps]);
+  }, [trackSelf, trackSystemApps, hiddenApps, stopTrackingOnIdle]);
+
+  useEffect(() => {
+    if (window.api && (window.api as any).getAutoStartStatus) {
+      (window.api as any).getAutoStartStatus().then(setAutoStart);
+    }
+  }, []);
 
   const showToast = (title: string, message: string) => {
     toast.success(title, { description: message });
@@ -154,14 +163,17 @@ const App: React.FC = () => {
   }, [activeApp?.name, trackSelf, trackSystemApps, hiddenApps]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (focusSessionActive && focusSessionTimeLeft > 0) {
-      interval = setInterval(() => setFocusSessionTimeLeft(prev => prev - 1), 1000);
-    } else if (focusSessionTimeLeft === 0 && focusSessionActive) {
-      setFocusSessionActive(false);
-      showToast('Session Complete', 'Great job! Take a short break to recharge.');
+    if (window.api && window.api.onFocusTimerTick) {
+      window.api.onFocusTimerTick((data: { active: boolean, timeLeft: number, total: number }) => {
+        // Show a toast only if we transition from active to inactive and time is up
+        if (focusSessionActive && !data.active && data.timeLeft === 0) {
+           showToast('Session Complete', 'Great job! Take a short break to recharge.');
+        }
+        setFocusSessionActive(data.active);
+        setFocusSessionTimeLeft(data.timeLeft);
+        if (data.total > 0 && !data.active) setFocusSessionMinutes(Math.floor(data.total / 60));
+      });
     }
-    return () => clearInterval(interval);
   }, [focusSessionActive, focusSessionTimeLeft]);
 
   const formatTime = (totalSeconds: number) => {
@@ -179,8 +191,7 @@ const App: React.FC = () => {
 
   const toggleFocusSession = () => {
     if (!focusSessionActive) {
-      setFocusSessionActive(true);
-      setFocusSessionTimeLeft(focusSessionMinutes * 60);
+      if (window.api && window.api.startFocusTimer) window.api.startFocusTimer(focusSessionMinutes);
       if (!isFocusMode) {
         setIsFocusMode(true);
         if (window.api && window.api.toggleFocusMode) window.api.toggleFocusMode(true);
@@ -189,8 +200,7 @@ const App: React.FC = () => {
         showToast('Deep Focus Started', 'Stay on task. You got this!');
       }
     } else {
-      setFocusSessionActive(false);
-      showToast('Deep Focus Stopped', 'Session manually ended.');
+      if (window.api && window.api.stopFocusTimer) window.api.stopFocusTimer();
     }
   };
 
@@ -249,6 +259,11 @@ const App: React.FC = () => {
         showToast('Data Cleared', 'All usage history has been permanently deleted.');
       }
     }
+  };
+  
+  const handleAutoStartToggle = (checked: boolean) => {
+    setAutoStart(checked);
+    if (window.api && (window.api as any).toggleAutoStart) (window.api as any).toggleAutoStart(checked);
   };
 
   const handlePresetChange = (preset: string) => {
@@ -416,6 +431,25 @@ const App: React.FC = () => {
 
   const totalCategoryTime = pieData.reduce((sum, item) => sum + item.value, 0);
 
+  const heatmapDays: { dateStr: string, score: number, hasData: boolean, isFuture: boolean }[] = [];
+  const currentDayOfWeek = new Date().getDay();
+  const daysToPadAtEnd = 6 - currentDayOfWeek;
+  const totalCells = 16 * 7; // 16 Weeks
+  
+  for (let i = totalCells - 1 - daysToPadAtEnd; i >= -daysToPadAtEnd; i--) {
+    if (i < 0) {
+      heatmapDays.push({ dateStr: '', score: 0, hasData: false, isFuture: true });
+    } else {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dStr = d.toISOString().split('T')[0];
+      const dayData = (dStr === todayStr && activeApp) ? activeApp.allUsage : (historyData[dStr] || {});
+      const score = calculateProductivityScoreForDay(dayData);
+      const hasData = Object.keys(dayData).length > 0;
+      heatmapDays.push({ dateStr: dStr, score, hasData, isFuture: false });
+    }
+  }
+
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
@@ -564,22 +598,21 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            <button 
-              onClick={toggleFocusSession} 
-              className={`z-10 flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-full font-bold text-xs sm:text-sm tracking-widest transition-all shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] hover:bg-[rgba(var(--a2),0.1)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
-            >
-              {focusSessionActive ? (
-                <>
-                  <Square className="w-4 h-4" />
-                  END SESSION
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current" />
-                  START FOCUS
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-3 z-10">
+              <button 
+                onClick={toggleFocusSession} 
+                className={`flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-full font-bold text-xs sm:text-sm tracking-widest transition-all shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] hover:bg-[rgba(var(--a2),0.1)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
+              >
+                {focusSessionActive ? ( <><Square className="w-4 h-4" /> END SESSION</> ) : ( <><Play className="w-4 h-4 fill-current" /> START FOCUS</> )}
+              </button>
+              <button 
+                onClick={() => { if (window.api && window.api.openMiniPlayer) window.api.openMiniPlayer(); }}
+                className="p-3 bg-[var(--panel-bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-full shadow-lg"
+                title="Open Mini Player"
+              >
+                <Maximize2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -798,6 +831,39 @@ const App: React.FC = () => {
           </div>
         </div>
 
+        <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] shrink-0" style={{ animationDelay: '0.2s' }}>
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide">Productivity Heatmap</h2>
+          </div>
+          <div className="flex gap-2 w-full overflow-x-auto custom-scrollbar pb-4 items-end">
+            <div className="grid grid-rows-7 gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] text-[var(--text)] opacity-40 font-bold pr-1 items-center text-right pb-1">
+              <span className="opacity-0">S</span><span>M</span><span className="opacity-0">T</span><span>W</span><span className="opacity-0">T</span><span>F</span><span className="opacity-0">S</span>
+            </div>
+            <div className="grid grid-rows-7 grid-flow-col gap-1 sm:gap-1.5 flex-1 min-w-max pb-1">
+              {heatmapDays.map((day, idx) => {
+                if (day.isFuture) return <div key={`future-${idx}`} className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-transparent"></div>;
+                let colorClass = "bg-[var(--panel-border)] opacity-30";
+                if (day.hasData) {
+                  if (day.score < 25) colorClass = "bg-[rgba(var(--a1),0.2)]";
+                  else if (day.score < 50) colorClass = "bg-[rgba(var(--a1),0.5)]";
+                  else if (day.score < 75) colorClass = "bg-[rgba(var(--a1),0.8)]";
+                  else colorClass = "bg-[rgb(var(--a1))] shadow-[0_0_8px_rgba(var(--a1),0.4)]";
+                }
+                return <div key={day.dateStr} className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${colorClass} transition-all hover:scale-125 hover:ring-2 hover:ring-[rgb(var(--a1))] cursor-crosshair`} title={`${format(new Date(day.dateStr + "T00:00:00"), 'MMM d, yyyy')}: ${day.hasData ? day.score + '% Productivity' : 'No Data'}`}></div>
+              })}
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 text-[10px] sm:text-xs text-[var(--text)] opacity-60 font-medium mt-2">
+            <span>Less</span>
+            <div className="w-3 h-3 rounded bg-[var(--panel-border)] opacity-30"></div>
+            <div className="w-3 h-3 rounded bg-[rgba(var(--a1),0.2)]"></div>
+            <div className="w-3 h-3 rounded bg-[rgba(var(--a1),0.5)]"></div>
+            <div className="w-3 h-3 rounded bg-[rgba(var(--a1),0.8)]"></div>
+            <div className="w-3 h-3 rounded bg-[rgb(var(--a1))] shadow-[0_0_5px_rgba(var(--a1),0.5)]"></div>
+            <span>More</span>
+          </div>
+        </div>
+
         <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
           <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ml-2">
@@ -938,6 +1004,32 @@ const App: React.FC = () => {
                 </div>
               </div>
               <Switch checked={trackSystemApps} onCheckedChange={setTrackSystemApps} />
+            </div>
+
+            <div className="flex items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
+                  <Play className="w-6 h-6 text-blue-400 fill-current" />
+                </div>
+                <div>
+                  <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Launch at Startup</h4>
+                  <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Start ForgePulse silently in the system tray when Windows boots.</p>
+                </div>
+              </div>
+              <Switch checked={autoStart} onCheckedChange={handleAutoStartToggle} />
+            </div>
+
+            <div className="flex items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[var(--panel-bg)] rounded-xl border border-[var(--panel-border)] shadow-inner">
+                  <Clock className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                  <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Stop Tracking on Idle</h4>
+                  <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Pause time tracking when you are away from your computer for 5+ minutes.</p>
+                </div>
+              </div>
+              <Switch checked={stopTrackingOnIdle} onCheckedChange={setStopTrackingOnIdle} />
             </div>
 
             <div className="flex items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner">
@@ -1097,6 +1189,29 @@ const App: React.FC = () => {
       </div>
     </div>
   );
+
+  // Special Route strictly for the frameless Mini Player window
+  const isMiniPlayer = window.location.hash === '#mini';
+  
+  if (isMiniPlayer) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-[var(--panel-bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] overflow-hidden relative border border-[var(--panel-border)] shadow-2xl transition-colors duration-500 rounded-2xl">
+        <button onClick={() => window.api?.closeMiniPlayer()} className="absolute top-2.5 right-3 p-1 opacity-40 hover:opacity-100 [-webkit-app-region:no-drag] cursor-pointer transition-opacity">
+          <X className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-2 mb-2">
+          <Flame className={`w-5 h-5 ${focusSessionActive ? 'text-[rgb(var(--a1))]' : 'opacity-40'}`} />
+          <span className="font-bold text-[10px] tracking-[0.2em] uppercase opacity-60">Focus Timer</span>
+        </div>
+        <span className="text-4xl font-black tabular-nums tracking-tight mb-4 drop-shadow-md text-[var(--text)]">
+          {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
+        </span>
+        <button onClick={toggleFocusSession} className={`[-webkit-app-region:no-drag] px-6 py-2 rounded-full text-[11px] font-black tracking-[0.15em] transition-all cursor-pointer shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.4)] hover:brightness-125'}`}>
+          {focusSessionActive ? 'STOP' : 'START'}
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

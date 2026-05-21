@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification, powerMonitor } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
@@ -30,6 +30,13 @@ let halfWarningSent: Record<string, boolean> = {};
 let trackSystemApps = false;
 let trackSelf = false;
 let hiddenApps: string[] = [];
+let stopTrackingOnIdle = true;
+
+let focusTimerInterval: NodeJS.Timeout | null = null;
+let focusActive = false;
+let focusTimeLeft = 0;
+let focusTotalDuration = 0;
+let miniPlayerWin: BrowserWindow | null = null;
 
 // --- ENCRYPTION ENGINE ---
 const SECRET_KEY = crypto.scryptSync('forgepulse-secure-key-2026', 'salt', 32);
@@ -98,6 +105,50 @@ ipcMain.on('update-preferences', (_event, prefs) => {
   trackSystemApps = prefs.trackSystemApps ?? false;
   trackSelf = prefs.trackSelf ?? false;
   hiddenApps = prefs.hiddenApps ?? [];
+  stopTrackingOnIdle = prefs.stopTrackingOnIdle ?? true;
+});
+
+ipcMain.handle('get-auto-start', () => {
+  return app.getLoginItemSettings().openAtLogin;
+});
+
+ipcMain.on('toggle-auto-start', (_event, enabled: boolean) => {
+  app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] });
+});
+
+ipcMain.on('start-focus-timer', (_event, minutes: number) => {
+  focusActive = true;
+  focusTotalDuration = minutes * 60;
+  focusTimeLeft = minutes * 60;
+  isFocusModeEnabled = true; // Auto-engage global blocking
+  BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: focusActive, timeLeft: focusTimeLeft, total: focusTotalDuration }));
+
+  if (!focusTimerInterval) {
+    focusTimerInterval = setInterval(() => {
+      if (focusActive && focusTimeLeft > 0) {
+        focusTimeLeft--;
+        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: focusActive, timeLeft: focusTimeLeft, total: focusTotalDuration }));
+      } else if (focusActive && focusTimeLeft <= 0) {
+        focusActive = false;
+        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: false, timeLeft: 0, total: focusTotalDuration }));
+        new Notification({ title: 'Session Complete', body: 'Great job! Take a short break to recharge.' }).show();
+      }
+    }, 1000);
+  }
+});
+
+ipcMain.on('stop-focus-timer', () => {
+  focusActive = false;
+  BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: false, timeLeft: focusTimeLeft, total: focusTotalDuration }));
+});
+
+ipcMain.on('open-mini-player', () => {
+  if (miniPlayerWin) { miniPlayerWin.focus(); return; }
+  miniPlayerWin = createMiniPlayerWindow();
+});
+
+ipcMain.on('close-mini-player', () => {
+  if (miniPlayerWin) miniPlayerWin.close();
 });
 
 ipcMain.handle('save-csv', async (_event, csvContent: string) => {
@@ -337,7 +388,7 @@ async function startTracking(mainWindow: BrowserWindow) {
               tray.setToolTip(tip.length > 127 ? tip.substring(0, 124) + '...' : tip);
             }
           } else if (tray) {
-            tray.setToolTip('ForgePulse - Tracking System Process');
+            tray.setToolTip(isUserIdle ? 'ForgePulse - Idle (Tracking Paused)' : 'ForgePulse - Tracking System Process');
           }
 
           const appChanged = lastApp !== displayAppName;
@@ -374,7 +425,11 @@ function createWindow(): BrowserWindow {
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   });
 
-  mainWindow.on('ready-to-show', () => mainWindow.show());
+  const isHidden = process.argv.includes('--hidden');
+  mainWindow.on('ready-to-show', () => { 
+    if (!isHidden) mainWindow.show(); 
+  });
+  
   mainWindow.webContents.setWindowOpenHandler((details) => { shell.openExternal(details.url); return { action: 'deny' }; });
   mainWindow.on('close', (event) => { if (!isQuitting) { event.preventDefault(); mainWindow.hide(); } });
 
@@ -382,6 +437,21 @@ function createWindow(): BrowserWindow {
   else { mainWindow.loadFile(join(__dirname, '../renderer/index.html')); }
   return mainWindow;
 }
+
+function createMiniPlayerWindow(): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 250, height: 180, resizable: false,
+    alwaysOnTop: true, frame: false, transparent: true,
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true }
+  });
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) { win.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#mini'); } 
+  else { win.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'mini' }); }
+  
+  win.on('closed', () => miniPlayerWin = null);
+  return win;
+}
+
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');

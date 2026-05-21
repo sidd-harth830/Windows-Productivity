@@ -9,6 +9,17 @@ const api = {
   // NEW: Emit preferences to the backend
   updatePreferences: (prefs: any) => ipcRenderer.send('update-preferences', prefs),
 
+  // NEW: Auto-Start Setup
+  getAutoStartStatus: () => ipcRenderer.invoke('get-auto-start'),
+  toggleAutoStart: (enabled: boolean) => ipcRenderer.send('toggle-auto-start', enabled),
+
+  // NEW: Focus Timer & Mini Player Calls
+  startFocusTimer: (minutes: number) => ipcRenderer.send('start-focus-timer', minutes),
+  stopFocusTimer: () => ipcRenderer.send('stop-focus-timer'),
+  openMiniPlayer: () => ipcRenderer.send('open-mini-player'),
+  closeMiniPlayer: () => ipcRenderer.send('close-mini-player'),
+  onFocusTimerTick: (callback: (data: any) => void) => ipcRenderer.on('focus-timer-tick', (_event, data) => callback(data)),
+
   // NEW: Save CSV
   saveCsv: (content: string) => ipcRenderer.invoke('save-csv', content),
 
