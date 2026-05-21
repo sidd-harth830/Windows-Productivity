@@ -32,6 +32,7 @@ const App: React.FC = () => {
   const [historyData, setHistoryData] = useState<Record<string, Record<string, number>>>({});
   const [analyticsStartDate, setAnalyticsStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [analyticsEndDate, setAnalyticsEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [datePreset, setDatePreset] = useState<string>('today');
   const [analyticsSearch, setAnalyticsSearch] = useState<string>('');
 
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
@@ -151,6 +152,32 @@ const App: React.FC = () => {
           showToast('Data Cleared', 'All usage history has been permanently deleted.');
         }
       }
+    }
+  };
+
+  const handlePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    if (preset === 'today') {
+      setAnalyticsStartDate(todayStr);
+      setAnalyticsEndDate(todayStr);
+    } else if (preset === 'last7') {
+      const last7 = new Date(today);
+      last7.setDate(today.getDate() - 6);
+      setAnalyticsStartDate(last7.toISOString().split('T')[0]);
+      setAnalyticsEndDate(todayStr);
+    } else if (preset === 'last30') {
+      const last30 = new Date(today);
+      last30.setDate(today.getDate() - 29);
+      setAnalyticsStartDate(last30.toISOString().split('T')[0]);
+      setAnalyticsEndDate(todayStr);
+    } else if (preset === 'all') {
+      const allDates = Object.keys(historyData).sort();
+      const earliest = allDates.length > 0 ? allDates[0] : todayStr;
+      setAnalyticsStartDate(earliest);
+      setAnalyticsEndDate(todayStr);
     }
   };
 
@@ -392,14 +419,26 @@ const App: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <span className="text-[var(--text)] opacity-60 text-sm font-bold">Date Range:</span>
             <div className="flex items-center gap-2 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-3 py-1.5 shadow-inner">
+              <select
+                value={datePreset}
+                onChange={(e) => handlePresetChange(e.target.value)}
+                className="bg-transparent text-sm text-[rgb(var(--a1))] font-bold focus:outline-none cursor-pointer outline-none appearance-none pr-2 relative"
+              >
+                <option value="today" className="text-[var(--text)] bg-[var(--bg)]">Today</option>
+                <option value="last7" className="text-[var(--text)] bg-[var(--bg)]">Last 7 Days</option>
+                <option value="last30" className="text-[var(--text)] bg-[var(--bg)]">Last 30 Days</option>
+                <option value="all" className="text-[var(--text)] bg-[var(--bg)]">All Time</option>
+                <option value="custom" className="text-[var(--text)] bg-[var(--bg)]" disabled>Custom</option>
+              </select>
+              <div className="w-px h-4 bg-[var(--panel-border)] mx-1"></div>
               <input 
-                type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={(e) => setAnalyticsStartDate(e.target.value)}
+                type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={(e) => { setAnalyticsStartDate(e.target.value); setDatePreset('custom'); }}
                 style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
                 className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
               />
               <span className="text-[var(--text)] opacity-40 font-bold text-xs tracking-widest px-1">TO</span>
               <input 
-                type="date" value={analyticsEndDate} min={analyticsStartDate} max={todayStr} onChange={(e) => setAnalyticsEndDate(e.target.value)}
+                type="date" value={analyticsEndDate} min={analyticsStartDate} max={todayStr} onChange={(e) => { setAnalyticsEndDate(e.target.value); setDatePreset('custom'); }}
                 style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
                 className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
               />
