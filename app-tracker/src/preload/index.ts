@@ -10,7 +10,10 @@ const api = {
   updatePreferences: (prefs: any) => ipcRenderer.send('update-preferences', prefs),
 
   // NEW: Save CSV
-  saveCsv: (content: string) => ipcRenderer.invoke('save-csv', content)
+  saveCsv: (content: string) => ipcRenderer.invoke('save-csv', content),
+
+  // NEW: Save PDF
+  savePdf: (base64Str: string, filename?: string) => ipcRenderer.invoke('save-pdf', base64Str, filename)
 }
 
 if (process.contextIsolated) {

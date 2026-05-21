@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid } from 'recharts'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import Controls from './components/Controls'
 
 export type ThemeKey = 'neon' | 'obsidian' | 'royal' | 'forest' | 'vibrancy' | 'jewel' | 'pastels' | 'warm' | 'mono';
@@ -62,6 +64,12 @@ const App: React.FC = () => {
   const [activeApp, setActiveApp] = useState<WindowData | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [blockList, setBlockList] = useState<Record<string, 'fully_blocked' | number>>({});
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{ title: string; message: string } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const analyticsRef = useRef<HTMLDivElement>(null);
 
   // FIX: Moved timeframe state up to the root level!
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
@@ -79,6 +87,12 @@ const App: React.FC = () => {
       window.api.updatePreferences({ trackSelf, trackSystemApps });
     }
   }, [trackSelf, trackSystemApps]);
+
+  const showToast = (title: string, message: string) => {
+    setToastMessage({ title, message });
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 4000);
+  };
 
   const isAppValid = (appName: string) => {
     if (trackSelf) return true;
@@ -113,8 +127,57 @@ const App: React.FC = () => {
     
     const csvContent = rows.map(e => e.join(",")).join("\n");
     if (window.api && (window.api as any).saveCsv) {
-      await (window.api as any).saveCsv(csvContent);
+      const success = await (window.api as any).saveCsv(csvContent);
+      if (success) {
+        showToast('CSV Exported', 'Your data was successfully saved.');
+      }
     }
+  };
+
+  const handleExportPdf = async (ref: React.RefObject<HTMLDivElement | null>, filename: string) => {
+    if (!ref.current) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(ref.current, {
+        scale: 2,
+        backgroundColor: THEMES[theme].bg,
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          const style = clonedDoc.createElement('style');
+          style.innerHTML = '*::-webkit-scrollbar { display: none !important; } * { scrollbar-width: none !important; }';
+          clonedDoc.head.appendChild(style);
+        }
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+      
+      // Convert to a base64 string to safely pass over Electron's IPC bridge
+      const pdfDataUri = pdf.output('datauristring');
+      const base64Data = pdfDataUri.split(',')[1];
+      
+      if (window.api && (window.api as any).savePdf) {
+        const success = await (window.api as any).savePdf(base64Data, filename);
+        if (success) {
+          showToast('PDF Exported', `Saved as ${filename}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to export PDF', error);
+      showToast('Export Failed', 'An error occurred while exporting.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportPdfFromSettings = (tab: 'dashboard' | 'analytics') => {
+    setActiveTab(tab);
+    setTimeout(() => {
+      const dateStr = new Date().toISOString().split('T')[0];
+      const ref = tab === 'dashboard' ? dashboardRef : analyticsRef;
+      handleExportPdf(ref, `forgepulse-${tab}-${dateStr}.pdf`);
+    }, 600);
   };
 
   // Get ALL apps without .slice
@@ -167,12 +230,30 @@ const App: React.FC = () => {
     const displayTime = mostUsedApp ? formatTime(mostUsedApp.time) : "0m";
 
     return (
-      <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
-        <div className="mb-2">
-          <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[rgba(255,255,255,0.9)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
-            Productivity Dashboard
-          </h1>
-          <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
+      <div ref={dashboardRef} className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto pb-4 p-4 rounded-xl">
+        <div className="mb-2 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+          <div>
+            <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[rgba(255,255,255,0.9)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
+              Productivity Dashboard
+            </h1>
+            <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
+          </div>
+          <button 
+            data-html2canvas-ignore="true"
+            disabled={isExporting}
+            onClick={() => {
+              const dateStr = new Date().toISOString().split('T')[0];
+              handleExportPdf(dashboardRef, `forgepulse-dashboard-${dateStr}.pdf`);
+            }}
+            className={`bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-4 py-2 rounded-lg text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            {isExporting ? (
+              <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+            )}
+            {isExporting ? 'PROCESSING...' : 'EXPORT PDF'}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 shrink-0">
@@ -253,7 +334,7 @@ const App: React.FC = () => {
     ];
 
     return (
-      <div className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto w-full">
+      <div ref={analyticsRef} className="flex flex-col h-full gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto w-full pb-4 p-4 rounded-xl">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
           <div>
             <h1 className="text-5xl md:text-[3.5rem] font-black mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[rgba(255,255,255,0.9)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
@@ -262,10 +343,28 @@ const App: React.FC = () => {
             <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
 
-          <div className="flex gap-2 p-1.5 bg-black/40 rounded-xl border border-white/5 shadow-inner">
-            <button onClick={() => setTimeframe('daily')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'daily' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Daily</button>
-            <button onClick={() => setTimeframe('weekly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'weekly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Weekly</button>
-            <button onClick={() => setTimeframe('monthly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'monthly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Monthly</button>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2 p-1.5 bg-black/40 rounded-xl border border-white/5 shadow-inner" data-html2canvas-ignore="true">
+              <button onClick={() => setTimeframe('daily')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'daily' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Daily</button>
+              <button onClick={() => setTimeframe('weekly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'weekly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Weekly</button>
+              <button onClick={() => setTimeframe('monthly')} className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${timeframe === 'monthly' ? 'bg-[rgb(var(--a1))] text-white shadow-[0_0_15px_rgba(var(--a1),0.4)]' : 'text-gray-500 hover:text-white'}`}>Monthly</button>
+            </div>
+            <button 
+              data-html2canvas-ignore="true"
+              disabled={isExporting}
+              onClick={() => {
+                const dateStr = new Date().toISOString().split('T')[0];
+                handleExportPdf(analyticsRef, `forgepulse-analytics-${dateStr}.pdf`);
+              }}
+              className={`bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-4 py-2.5 rounded-lg text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2 h-full ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              {isExporting ? (
+                <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+              )}
+              {isExporting ? 'WAIT' : 'PDF'}
+            </button>
           </div>
         </div>
 
@@ -349,17 +448,40 @@ const App: React.FC = () => {
         <div className="flex flex-col gap-4">
           <h3 className="text-[var(--text)] font-bold text-xl border-b border-white/10 pb-3 tracking-wide">Data Management</h3>
 
-          <div className="flex items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-white/5 shadow-inner">
+          <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-white/5 shadow-inner gap-4">
             <div>
               <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
-              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your complete application usage history as a CSV file.</p>
+              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your complete application usage history as a CSV or export visual PDFs from the Dashboard/Analytics tabs.</p>
             </div>
-            <button 
-              onClick={handleExportCsv}
-              className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)]"
-            >
-              EXPORT CSV
-            </button>
+            <div className="flex flex-wrap gap-3 mt-3 xl:mt-0">
+              <button 
+                onClick={handleExportCsv}
+                className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                EXPORT CSV
+              </button>
+
+              <button 
+                onClick={() => exportPdfFromSettings('dashboard')}
+                disabled={isExporting}
+                className={`bg-transparent border border-[rgb(var(--a1))] text-[rgb(var(--a1))] hover:bg-[rgba(var(--a1),0.1)] px-5 py-3 rounded-xl text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a1),0.1)] flex items-center gap-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                DASHBOARD PDF
+              </button>
+              
+              <button 
+                onClick={() => exportPdfFromSettings('analytics')}
+                disabled={isExporting}
+                className={`bg-transparent border border-[rgb(var(--a2))] text-[rgb(var(--a2))] hover:bg-[rgba(var(--a2),0.1)] px-5 py-3 rounded-xl text-sm font-black tracking-widest transition-all shadow-[0_0_15px_rgba(var(--a2),0.1)] flex items-center gap-2 ${isExporting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                ANALYTICS PDF
+              </button>
+            </div>
           </div>
         </div>
 
@@ -473,6 +595,24 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* In-App Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-8 right-8 bg-gradient-to-br from-[rgb(var(--a1))] to-[rgb(var(--a2))] p-[1px] rounded-2xl shadow-[0_10px_40px_rgba(var(--a1),0.4)] z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-[var(--bg)] px-6 py-4 rounded-[15px] flex items-center gap-4 border border-white/10">
+            <div className="w-8 h-8 rounded-full bg-[rgba(var(--a1),0.2)] flex items-center justify-center text-[rgb(var(--a1))]">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-[var(--text)] font-bold text-sm tracking-wide">{toastMessage.title}</h4>
+              <p className="text-[var(--text)] opacity-60 text-xs font-medium mt-0.5">{toastMessage.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

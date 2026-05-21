@@ -60,6 +60,28 @@ ipcMain.handle('save-csv', async (_event, csvContent: string) => {
   return false;
 });
 
+ipcMain.handle('save-pdf', async (_event, base64Str: string, filename?: string) => {
+  try {
+    const downloadsPath = app.getPath('downloads');
+    const finalFilename = filename || `forgepulse-usage-${Date.now()}.pdf`;
+    const filePath = join(downloadsPath, finalFilename);
+    
+    await fs.promises.writeFile(filePath, Buffer.from(base64Str, 'base64'));
+    
+    new Notification({
+      title: 'PDF Export Complete',
+      body: `Successfully saved to Downloads folder.`
+    }).show();
+    
+    // Automatically opens Windows Explorer and highlights the file!
+    shell.showItemInFolder(filePath);
+    return true;
+  } catch (error) {
+    console.error('Failed to auto-save PDF:', error);
+    return false;
+  }
+});
+
 function cleanAppName(rawName: string): string {
   let clean = rawName.replace(/\.exe$/i, '').trim();
   if (clean.toLowerCase() === 'code') return 'VS Code';
