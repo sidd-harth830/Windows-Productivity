@@ -206,6 +206,36 @@ ipcMain.handle('clear-usage-data', async () => {
   } catch (e) { return false; }
 });
 
+ipcMain.handle('browse-for-exe', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Select Executable',
+    filters: [{ name: 'Applications', extensions: ['exe'] }],
+    properties: ['openFile']
+  });
+  
+  if (canceled || filePaths.length === 0) return null;
+  
+  const exePath = filePaths[0];
+  const rawName = exePath.split('\\').pop() || '';
+  const displayAppName = cleanAppName(rawName);
+
+  if (!appIcons[displayAppName]) {
+    try {
+      const nativeIcon = await app.getFileIcon(exePath, { size: 'large' });
+      appIcons[displayAppName] = nativeIcon.toDataURL();
+      appPaths[displayAppName] = exePath;
+      await fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths)));
+      
+      // Force an update so the frontend gets the new icon immediately
+      BrowserWindow.getAllWindows().forEach(win => {
+        win.webContents.send('window-update', { name: lastApp || 'Desktop', title: '', focusTime: lastApp ? (appUsage[lastApp] || 0) : 0, allUsage: { ...appUsage }, appIcons: { ...appIcons } });
+      });
+    } catch (e) {}
+  }
+
+  return displayAppName;
+});
+
 ipcMain.handle('get-history', () => {
   return allUsageData;
 });

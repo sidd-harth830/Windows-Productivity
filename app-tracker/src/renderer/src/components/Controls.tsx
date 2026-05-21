@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { GenericAppIcon, X, Clock, ShieldBan, ShieldAlert } from './Icons'
+import { GenericAppIcon, X, Clock, ShieldBan, ShieldAlert, FolderOpen } from './Icons'
 import { Switch } from '../switch'
 import { Input } from '../input'
 
@@ -83,6 +83,16 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
             const success = await (window.api as any).removeAppUsage(appName);
             if (success) {
                 showToast('Log Deleted', `Removed "${appName}".`);
+            }
+        }
+    };
+
+    const handleBrowseExe = async () => {
+        if (window.api && (window.api as any).browseForExe) {
+            const appName = await (window.api as any).browseForExe();
+            if (appName) {
+                setInputValue(appName);
+                setShowSuggestions(true);
             }
         }
     };
@@ -187,38 +197,43 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </div>
 
                         <form onSubmit={handleSubmit} className="flex gap-3 relative z-30">
-                            <div className="relative flex-grow">
-                                <Input
-                                    type="text"
-                                    value={inputValue}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    onChange={(e) => {
-                                        setInputValue(e.target.value);
-                                        setShowSuggestions(true);
-                                    }}
-                                    placeholder="Search detected apps..."
-                                    className="h-14 border-2 rounded-xl px-5 text-base font-bold"
-                                />
-                                {showSuggestions && filteredSuggestions.length > 0 && (
-                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col">
-                                        <div className="flex flex-col max-h-60 overflow-y-auto custom-scrollbar">
-                                            {filteredSuggestions.map(app => (
-                                                <button
-                                                    key={app}
-                                                    type="button"
-                                                    onClick={() => handleAddApp(app)}
-                                                    className="text-left px-5 py-4 text-sm text-[var(--text)] hover:bg-[rgba(var(--a1),0.2)] transition-colors border-b border-[var(--panel-border)] last:border-0 cursor-pointer font-bold flex items-center gap-4"
-                                                >
-                                                    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 drop-shadow-md">
-                                                        {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
-                                                    </div>
-                                                    <span className="flex-grow text-base tracking-wide">{app}</span>
-                                                    <span className="text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-3 py-1 rounded font-black border border-[rgba(var(--a1),0.2)] tracking-widest">SELECT</span>
-                                                </button>
-                                            ))}
+                            <div className="relative flex-grow flex gap-2">
+                                <div className="relative flex-grow">
+                                    <Input
+                                        type="text"
+                                        value={inputValue}
+                                        onFocus={() => setShowSuggestions(true)}
+                                        onChange={(e) => {
+                                            setInputValue(e.target.value);
+                                            setShowSuggestions(true);
+                                        }}
+                                        placeholder="Search detected apps..."
+                                        className="h-14 border-2 rounded-xl px-5 text-base font-bold flex-1"
+                                    />
+                                    {showSuggestions && filteredSuggestions.length > 0 && (
+                                        <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)]/95 backdrop-blur-3xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col">
+                                            <div className="flex flex-col max-h-60 overflow-y-auto custom-scrollbar">
+                                                {filteredSuggestions.map(app => (
+                                                    <button
+                                                        key={app}
+                                                        type="button"
+                                                        onClick={() => handleAddApp(app)}
+                                                        className="text-left px-5 py-4 text-sm text-[var(--text)] hover:bg-[rgba(var(--a1),0.2)] transition-colors border-b border-[var(--panel-border)] last:border-0 cursor-pointer font-bold flex items-center gap-4"
+                                                    >
+                                                        <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 drop-shadow-md">
+                                                            {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
+                                                        </div>
+                                                        <span className="flex-grow text-base tracking-wide">{app}</span>
+                                                        <span className="text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-3 py-1 rounded font-black border border-[rgba(var(--a1),0.2)] tracking-widest">SELECT</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
+                                <button type="button" onClick={handleBrowseExe} className="h-14 w-14 flex items-center justify-center bg-[var(--bg)] border-2 border-[var(--panel-border)] rounded-xl text-[var(--text)] opacity-50 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] transition-all shadow-inner shrink-0 cursor-pointer" title="Browse for executable">
+                                    <FolderOpen className="w-6 h-6" />
+                                </button>
                             </div>
 
                             {ruleType === 'timer' && (

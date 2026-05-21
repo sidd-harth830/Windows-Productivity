@@ -24,6 +24,9 @@ const api = {
   // NEW: Clear Usage Data
   clearUsageData: () => ipcRenderer.invoke('clear-usage-data'),
 
+  // NEW: Browse for executable
+  browseForExe: () => ipcRenderer.invoke('browse-for-exe'),
+
   // NEW: Get History
   getHistory: () => ipcRenderer.invoke('get-history')
 }
