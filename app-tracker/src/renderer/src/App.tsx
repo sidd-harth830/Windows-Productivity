@@ -30,7 +30,9 @@ const App: React.FC = () => {
   const [dashboardSearch, setDashboardSearch] = useState<string>('');
   const [sortMode, setSortMode] = useState<'duration' | 'alphabetical'>('duration');
   const [historyData, setHistoryData] = useState<Record<string, Record<string, number>>>({});
-  const [analyticsDate, setAnalyticsDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [analyticsStartDate, setAnalyticsStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [analyticsEndDate, setAnalyticsEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [analyticsSearch, setAnalyticsSearch] = useState<string>('');
 
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
@@ -161,9 +163,16 @@ const App: React.FC = () => {
     : [];
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const analyticsUsage = analyticsDate === todayStr 
-    ? (activeApp ? activeApp.allUsage : {})
-    : (historyData[analyticsDate] || {});
+  const analyticsUsage: Record<string, number> = {};
+  const allDates = Array.from(new Set([...Object.keys(historyData), todayStr]));
+  allDates.forEach(date => {
+    if (date >= analyticsStartDate && date <= analyticsEndDate) {
+      const dayData = (date === todayStr && activeApp) ? activeApp.allUsage : (historyData[date] || {});
+      for (const [app, time] of Object.entries(dayData)) {
+        analyticsUsage[app] = (analyticsUsage[app] || 0) + time;
+      }
+    }
+  });
 
   const analyticsChartData = Object.entries(analyticsUsage)
       .filter(([name]) => isAppValid(name))
@@ -369,6 +378,8 @@ const App: React.FC = () => {
       time: app.time
     }));
 
+    const filteredAnalyticsApps = analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
+
     return (
       <div ref={analyticsRef} className="flex flex-col h-full gap-8 max-w-6xl mx-auto w-full pb-4 p-4 rounded-xl">
         <div className="stagger-item flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2" style={{ animationDelay: '0.05s' }}>
@@ -378,16 +389,21 @@ const App: React.FC = () => {
             </h1>
             <p className="text-[var(--text)] opacity-70 text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[var(--text)] opacity-60 text-sm font-bold">Select Date:</span>
-            <input 
-              type="date"
-              value={analyticsDate}
-              max={todayStr}
-              onChange={(e) => setAnalyticsDate(e.target.value)}
-              style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
-              className="bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all shadow-inner custom-date-picker cursor-pointer"
-            />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <span className="text-[var(--text)] opacity-60 text-sm font-bold">Date Range:</span>
+            <div className="flex items-center gap-2 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-3 py-1.5 shadow-inner">
+              <input 
+                type="date" value={analyticsStartDate} max={analyticsEndDate} onChange={(e) => setAnalyticsStartDate(e.target.value)}
+                style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
+                className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
+              />
+              <span className="text-[var(--text)] opacity-40 font-bold text-xs tracking-widest px-1">TO</span>
+              <input 
+                type="date" value={analyticsEndDate} min={analyticsStartDate} max={todayStr} onChange={(e) => setAnalyticsEndDate(e.target.value)}
+                style={{ colorScheme: activeThemeKey === 'dark' ? 'dark' : 'light' }}
+                className="bg-transparent text-sm text-[var(--text)] font-medium focus:outline-none custom-date-picker cursor-pointer"
+              />
+            </div>
           </div>
         </div>
 
@@ -436,20 +452,34 @@ const App: React.FC = () => {
 
         <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
           <div className="lg:col-span-8 flex flex-col gap-4">
-            <h3 className="text-lg font-bold text-[var(--text)] tracking-wide ml-2">Top Applications</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ml-2">
+              <h3 className="text-lg font-bold text-[var(--text)] tracking-wide">Top Applications</h3>
+              <div className="relative w-full sm:w-56 print:hidden">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search apps..."
+                  value={analyticsSearch}
+                  onChange={(e) => setAnalyticsSearch(e.target.value)}
+                  className="w-full bg-[var(--bg)] border border-[var(--panel-border)] rounded-lg pl-9 pr-3 py-2 text-xs text-[var(--text)] font-medium focus:outline-none focus:border-[rgb(var(--a1))] transition-all shadow-inner"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pr-2 max-h-[320px]">
-              {analyticsChartData.map((app) => (
+              {filteredAnalyticsApps.map((app) => (
                 <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className="bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg hover:border-[rgba(var(--a1),0.3)] transition-colors cursor-context-menu">
                   <div className="w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[var(--panel-border)] flex items-center justify-center p-2.5 shadow-inner shrink-0">
                     {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate">{app.name}</p>
-                    <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsDate === todayStr ? 'today' : 'total'}</span></p>
+                    <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
                   </div>
                 </div>
               ))}
-              {analyticsChartData.length === 0 && (
+              {filteredAnalyticsApps.length === 0 && (
                 <div className="col-span-1 md:col-span-2 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
                    <span className="text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">Waiting for logs...</span>
                 </div>
