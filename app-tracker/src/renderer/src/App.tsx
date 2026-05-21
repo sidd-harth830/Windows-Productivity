@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie } from 'recharts'
 import Controls from './components/Controls'
 import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, RefreshCw, Check, X } from './components/Icons'
 
@@ -106,22 +106,37 @@ const App: React.FC = () => {
   };
 
   const handleExportCsv = async () => {
-    if (!activeApp) return;
+    let fullHistory = historyData;
     
-    const rows = [
-      ['Application', 'Time Spent (seconds)', 'Formatted Time'],
-      ...Object.entries(activeApp.allUsage).map(([app, time]) => [
-        `"${app}"`,
-        time,
-        `"${formatTime(time)}"`
-      ])
-    ];
+    if (Object.keys(fullHistory).length === 0 && window.api && (window.api as any).getHistory) {
+      fullHistory = await (window.api as any).getHistory();
+    }
     
+    const today = new Date().toISOString().split('T')[0];
+    if (activeApp) {
+      fullHistory = { ...fullHistory, [today]: activeApp.allUsage };
+    }
+
+    if (Object.keys(fullHistory).length === 0) return;
+
+    const rows = [['Date', 'Application', 'Time Spent (seconds)', 'Formatted Time']];
+    const dates = Object.keys(fullHistory).sort((a, b) => b.localeCompare(a));
+    
+    for (const date of dates) {
+      const dayData = fullHistory[date];
+      const apps = Object.entries(dayData).sort((a, b) => b[1] - a[1]);
+      for (const [app, time] of apps) {
+        if (time > 0 && isAppValid(app)) {
+          rows.push([date, `"${app}"`, time.toString(), `"${formatTime(time)}"`]);
+        }
+      }
+    }
+
     const csvContent = rows.map(e => e.join(",")).join("\n");
     if (window.api && (window.api as any).saveCsv) {
       const success = await (window.api as any).saveCsv(csvContent);
       if (success) {
-        showToast('CSV Exported', 'Your data was successfully saved.');
+        showToast('CSV Exported', 'Your complete history was successfully saved.');
       }
     }
   };
@@ -200,6 +215,28 @@ const App: React.FC = () => {
       </g>
     );
   };
+
+  const PIE_COLORS = ['rgb(var(--a1))', 'rgb(var(--a2))', 'rgba(var(--a1), 0.7)', 'rgba(var(--a2), 0.7)', 'rgba(var(--a1), 0.4)', 'rgba(var(--a2), 0.4)'];
+
+  const categorizeApp = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('code') || n.includes('studio') || n.includes('terminal') || n.includes('git') || n.includes('idea')) return 'Development';
+    if (n.includes('chrome') || n.includes('edge') || n.includes('firefox') || n.includes('brave') || n.includes('safari') || n.includes('opera')) return 'Browsing';
+    if (n.includes('slack') || n.includes('discord') || n.includes('teams') || n.includes('zoom') || n.includes('mail') || n.includes('outlook') || n.includes('telegram')) return 'Communication';
+    if (n.includes('spotify') || n.includes('netflix') || n.includes('youtube') || n.includes('steam') || n.includes('game') || n.includes('player') || n.includes('music')) return 'Entertainment';
+    if (n.includes('word') || n.includes('excel') || n.includes('powerpoint') || n.includes('notion') || n.includes('obsidian') || n.includes('onenote') || n.includes('acrobat')) return 'Productivity';
+    return 'Other';
+  };
+
+  const categoryDataMap: Record<string, number> = {};
+  analyticsChartData.forEach(app => {
+    const cat = categorizeApp(app.name);
+    categoryDataMap[cat] = (categoryDataMap[cat] || 0) + app.time;
+  });
+  
+  const pieData = Object.entries(categoryDataMap)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
 
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
@@ -395,23 +432,69 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="stagger-item grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
-          {analyticsChartData.slice(0, 3).map((app) => (
-            <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className="bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg hover:border-[rgba(var(--a1),0.3)] transition-colors cursor-context-menu">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[var(--panel-border)] flex items-center justify-center p-2.5 shadow-inner">
-                {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest">{app.name}</p>
-                <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsDate === todayStr ? 'today' : 'total'}</span></p>
-              </div>
+        <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
+          <div className="lg:col-span-8 flex flex-col gap-4">
+            <h3 className="text-lg font-bold text-[var(--text)] tracking-wide ml-2">Top Applications</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {analyticsChartData.slice(0, 4).map((app) => (
+                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className="bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl flex items-center gap-5 shadow-lg hover:border-[rgba(var(--a1),0.3)] transition-colors cursor-context-menu">
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[var(--panel-border)] flex items-center justify-center p-2.5 shadow-inner shrink-0">
+                    {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate">{app.name}</p>
+                    <p className="text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate">{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsDate === todayStr ? 'today' : 'total'}</span></p>
+                  </div>
+                </div>
+              ))}
+              {analyticsChartData.length === 0 && (
+                <div className="col-span-1 md:col-span-2 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
+                   <span className="text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">Waiting for logs...</span>
+                </div>
+              )}
             </div>
-          ))}
-          {analyticsChartData.length === 0 && (
-            <div className="col-span-1 md:col-span-3 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
-               <span className="text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">Waiting for logs...</span>
+          </div>
+          <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-xl border border-[var(--panel-border)] p-6 rounded-3xl shadow-lg flex flex-col min-h-[250px]">
+            <h3 className="text-lg font-bold text-[var(--text)] tracking-wide mb-4 text-center">Category Breakdown</h3>
+            <div className="flex-1 w-full min-h-[180px] relative">
+              {pieData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        content={({ active, payload }: any) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-[var(--bg)]/95 backdrop-blur-xl border border-[var(--panel-border)] p-3 rounded-xl shadow-xl z-50">
+                                <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{payload[0].name}</p>
+                                <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">{formatTime(payload[0].value)}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-2">
+                    {pieData.map((entry, index) => (
+                      <div key={entry.name} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
+                        <span className="text-[var(--text)] text-xs font-bold opacity-70">{entry.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-[var(--text)] opacity-40 font-bold tracking-widest uppercase text-sm">No Data</div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     );
