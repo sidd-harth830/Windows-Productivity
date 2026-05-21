@@ -39,6 +39,8 @@ const App: React.FC = () => {
   const [analyticsEndDate, setAnalyticsEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [datePreset, setDatePreset] = useState<string>('today');
   const [analyticsSearch, setAnalyticsSearch] = useState<string>('');
+  const [exportStartDate, setExportStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [exportEndDate, setExportEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
@@ -151,8 +153,15 @@ const App: React.FC = () => {
     if (Object.keys(fullHistory).length === 0) return;
 
     const rows = [['Date', 'Application', 'Time Spent (seconds)', 'Formatted Time']];
-    const dates = Object.keys(fullHistory).sort((a, b) => b.localeCompare(a));
+    const dates = Object.keys(fullHistory)
+      .filter(d => d >= exportStartDate && d <= exportEndDate)
+      .sort((a, b) => b.localeCompare(a));
     
+    if (dates.length === 0) {
+      showToast('Export Failed', 'No usage data found for the selected date range.');
+      return;
+    }
+
     for (const date of dates) {
       const dayData = fullHistory[date];
       const apps = Object.entries(dayData).sort((a, b) => b[1] - a[1]);
@@ -729,12 +738,43 @@ const App: React.FC = () => {
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between bg-[var(--bg)] p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
             <div>
               <h4 className="text-[var(--text)] font-bold text-base tracking-wide">Export Usage Data</h4>
-              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your complete application usage history as a CSV.</p>
+              <p className="text-sm text-[var(--text)] opacity-50 mt-1 max-w-lg font-medium">Download your application usage history as a CSV for external analysis.</p>
             </div>
-            <div className="flex gap-3 mt-3 xl:mt-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-3 xl:mt-0 w-full xl:w-auto">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="bg-[var(--panel-bg)] border border-[var(--panel-border)] text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[rgba(var(--a1),0.1)] px-4 py-3 rounded-xl transition-colors text-left min-w-[210px] flex items-center justify-center gap-2 shadow-inner">
+                    <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    {exportStartDate === exportEndDate 
+                      ? format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")
+                      : `${format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")} - ${format(new Date(exportEndDate + "T00:00:00"), "MMM d, yyyy")}`}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar 
+                    mode="range" 
+                    defaultMonth={new Date(exportStartDate + "T00:00:00")}
+                    selected={{ from: new Date(exportStartDate + "T00:00:00"), to: new Date(exportEndDate + "T00:00:00") }} 
+                    onSelect={(range: any) => {
+                      if (range?.from) {
+                        const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth()+1).padStart(2,'0')}-${String(range.from.getDate()).padStart(2,'0')}`;
+                        setExportStartDate(fromStr);
+                        if (range.to) {
+                          const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth()+1).padStart(2,'0')}-${String(range.to.getDate()).padStart(2,'0')}`;
+                          setExportEndDate(toStr);
+                        } else {
+                          setExportEndDate(fromStr);
+                        }
+                      }
+                    }} 
+                    initialFocus 
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
               <button 
                 onClick={handleExportCsv}
-                className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center gap-2"
+                className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-3 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
                 EXPORT CSV
