@@ -129,10 +129,10 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             <input
                                 type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
                                 placeholder="Activity (e.g., Reading Book)"
-                                className="w-full bg-[var(--bg)] border border-[var(--panel-border)] rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all font-bold shadow-inner" required
+                                className="w-full bg-transparent border-2 border-[var(--panel-border)] rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:bg-[var(--panel-bg)] focus:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all font-bold" required
                             />
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-[var(--bg)] border border-[rgba(var(--a1),0.5)] shadow-[0_0_15px_rgba(var(--a1),0.15)] rounded-xl px-4 py-2 w-1/2">
+                                <div className="flex items-center gap-2 bg-transparent border-2 border-[rgba(var(--a1),0.5)] focus-within:bg-[var(--panel-bg)] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.2)] transition-all rounded-xl px-4 py-2 w-1/2">
                                     <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value))} className="w-full bg-transparent text-[rgb(var(--a1))] text-center font-black text-lg focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)]" required />
                                     <span className="text-[var(--text)] opacity-50 font-bold pr-1">MIN</span>
                                 </div>
@@ -188,10 +188,10 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                         setShowSuggestions(true);
                                     }}
                                     placeholder="Search detected apps..."
-                                    className="w-full bg-[var(--bg)] border border-[var(--panel-border)] rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:ring-1 focus:ring-[rgb(var(--a1))] transition-all font-bold shadow-inner"
+                                    className="w-full bg-transparent border-2 border-[var(--panel-border)] rounded-xl px-5 py-4 text-sm text-[var(--text)] focus:outline-none focus:border-[rgb(var(--a1))] focus:bg-[var(--panel-bg)] focus:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all font-bold"
                                 />
                                 {showSuggestions && inputValue.length > 0 && filteredSuggestions.length > 0 && (
-                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--bg)] border border-[rgba(var(--a1),0.4)] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">
+                                    <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[var(--panel-bg)] backdrop-blur-2xl border border-[rgba(var(--a1),0.4)] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-60 overflow-y-auto">
                                         {filteredSuggestions.map(app => (
                                             <button
                                                 key={app}
@@ -211,7 +211,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </div>
 
                             {ruleType === 'timer' && (
-                                <div className="flex items-center gap-2 bg-[var(--bg)] border border-[rgba(var(--a1),0.5)] shadow-[0_0_15px_rgba(var(--a1),0.15)] rounded-xl px-4 py-2">
+                                <div className="flex items-center gap-2 bg-transparent border-2 border-[rgba(var(--a1),0.5)] focus-within:bg-[var(--panel-bg)] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.2)] transition-all rounded-xl px-4 py-2">
                                     <input type="number" min="1" max="1440" value={timeLimitMinutes} onChange={(e) => setTimeLimitMinutes(Number(e.target.value))} className="w-14 bg-transparent text-[rgb(var(--a1))] text-center font-black text-lg focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)]" />
                                     <span className="text-[var(--text)] opacity-50 font-bold pr-1">MIN</span>
                                 </div>

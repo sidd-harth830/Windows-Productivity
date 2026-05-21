@@ -4,8 +4,8 @@ import Controls from './components/Controls'
 import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, RefreshCw, Check, X } from './components/Icons'
 
 export const THEMES = {
-  dark: { bg: '#09090B', text: '#F8FAFC', a1: '99, 102, 241', a2: '168, 85, 247', panelBg: 'rgba(255,255,255,0.03)', panelBorder: 'rgba(255,255,255,0.08)' },
-  light: { bg: '#F8FAFC', text: '#020617', a1: '79, 70, 229', a2: '147, 51, 234', panelBg: 'rgba(0,0,0,0.04)', panelBorder: 'rgba(0,0,0,0.08)' }
+  dark: { bg: '#0A0A0B', text: '#F8FAFC', a1: '56, 189, 248', a2: '139, 92, 246', panelBg: 'rgba(255,255,255,0.03)', panelBorder: 'rgba(255,255,255,0.08)' },
+  light: { bg: '#E2E8F0', text: '#0F172A', a1: '37, 99, 235', a2: '79, 70, 229', panelBg: 'rgba(255, 255, 255, 0.65)', panelBorder: 'rgba(255, 255, 255, 0.9)' }
 };
 
 interface WindowData {
@@ -586,11 +586,27 @@ const App: React.FC = () => {
       <style>{`
         .stagger-item {
           opacity: 0;
-          animation: staggerSlideIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: staggerSlideIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         @keyframes staggerSlideIn {
-          0% { opacity: 0; transform: translateY(30px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0% { opacity: 0; transform: translateY(30px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        /* Custom Scrollbar for the application and target containers */
+        ::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(150, 150, 150, 0.25);
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(150, 150, 150, 0.45);
         }
       `}</style>
 

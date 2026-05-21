@@ -7,19 +7,19 @@ export const GenericAppIcon = () => (
 )
 
 export const ZeitraLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 130 161" xmlns="http://www.w3.org/2000/svg">
+  <svg className={className} viewBox="0 0 130 175" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="SVGID_1_" x1="20.01" x2="102.2" y1="10.06" y2="7.304" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a1))" stopOpacity="0.7" offset="1" />
+        <stop stopColor="rgb(var(--a2))" stopOpacity="0.9" offset="1" />
       </linearGradient>
       <linearGradient id="SVGID_2_" x1="71.06" x2="110.2" y1="22.79" y2="21.63" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a2))" stopOpacity="0.8" offset="1" />
+        <stop stopColor="rgb(var(--a2))" stopOpacity="0.9" offset="1" />
       </linearGradient>
       <linearGradient id="SVGID_3_" x1="19.11" x2="57.99" y1="74.68" y2="74.68" gradientUnits="userSpaceOnUse">
         <stop stopColor="rgb(var(--a1))" offset="0" />
-        <stop stopColor="rgb(var(--a2))" stopOpacity="0.8" offset="1" />
+        <stop stopColor="rgb(var(--a2))" stopOpacity="0.9" offset="1" />
       </linearGradient>
     </defs>
     <path fill="url(#SVGID_1_)" d="m105.3 2.5h-84.3c-1.5 2.7-1.3 6.8-0.4 10.1h72.4l0.1-0.1h1l7.1-8.1 1.2-1.4 2.9-0.5z" />
