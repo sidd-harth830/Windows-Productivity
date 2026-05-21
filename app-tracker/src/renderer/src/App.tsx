@@ -878,7 +878,7 @@ const App: React.FC = () => {
             setIsFocusMode={setIsFocusMode}
             blockList={blockList}
             setBlockList={setBlockList}
-            availableApps={activeApp ? Object.keys(activeApp.allUsage).filter(isAppValid) : []}
+            availableApps={activeApp ? Object.keys(activeApp.allUsage).filter(appName => isAppValid(appName) && activeApp.allUsage[appName] >= 60) : []}
             allUsage={activeApp ? activeApp.allUsage : {}}
             appIcons={activeApp ? activeApp.appIcons : {}}
             onContextMenu={handleContextMenu}
