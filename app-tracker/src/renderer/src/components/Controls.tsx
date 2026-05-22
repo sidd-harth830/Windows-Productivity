@@ -1,7 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { GenericAppIcon, X, Clock, ShieldBan, ShieldAlert, FolderOpen } from './Icons'
 import { Switch } from '../switch'
 import { Input } from '../input'
+
+const TrashIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
+const FilterIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>;
 
 export type BlockRule = 'fully_blocked' | number;
 
@@ -24,6 +27,8 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
     const [timeLimitMinutes, setTimeLimitMinutes] = useState<number>(30);
     const [offlineActivity, setOfflineActivity] = useState<string>('');
     const [offlineMinutes, setOfflineMinutes] = useState<number>(30);
+    const [ruleSearchQuery, setRuleSearchQuery] = useState<string>('');
+    const [ruleFilter, setRuleFilter] = useState<'all' | 'block' | 'timer'>('all');
 
     const handleToggleFocus = (checked: boolean) => {
         setIsFocusMode(checked);
@@ -44,6 +49,14 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         if (window.api && window.api.updateBlockList) window.api.updateBlockList(updatedList);
     };
 
+    const handleQuickAdd = (appName: string) => {
+        const newRule: BlockRule = ruleType === 'block' ? 'fully_blocked' : (timeLimitMinutes * 60);
+        const updatedList = { ...blockList, [appName]: newRule };
+        setBlockList(updatedList);
+        if (window.api && window.api.updateBlockList) window.api.updateBlockList(updatedList);
+        showToast('Rule Added', `Applied ${ruleType === 'block' ? 'Block' : 'Limit'} to ${appName}`);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         handleAddApp(inputValue);
@@ -54,6 +67,12 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         delete updatedList[appToRemove];
         setBlockList(updatedList);
         if (window.api && window.api.updateBlockList) window.api.updateBlockList(updatedList);
+    };
+
+    const handleClearAllRules = () => {
+        setBlockList({});
+        if (window.api && window.api.updateBlockList) window.api.updateBlockList({});
+        showToast('Rules Cleared', 'All enforcement rules have been removed.');
     };
 
     const filteredSuggestions = availableApps.filter(app =>
@@ -75,6 +94,15 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
             }
         }
     };
+
+    const filteredRules = useMemo(() => {
+        return Object.entries(blockList).filter(([app, rule]) => {
+            if (ruleFilter === 'block' && rule !== 'fully_blocked') return false;
+            if (ruleFilter === 'timer' && rule === 'fully_blocked') return false;
+            if (ruleSearchQuery && !app.toLowerCase().includes(ruleSearchQuery.toLowerCase())) return false;
+            return true;
+        });
+    }, [blockList, ruleFilter, ruleSearchQuery]);
 
     const offlineApps = Object.keys(allUsage).filter(app => app.endsWith('(Offline)'));
 
@@ -160,6 +188,14 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 </button>
                             </div>
                         </form>
+                        
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {['Reading', 'Meeting', 'Workout', 'Studying', 'Brainstorming'].map(preset => (
+                                <button key={preset} type="button" onClick={() => { setOfflineActivity(preset); setOfflineMinutes(30); }} className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-xs font-bold transition-all shadow-inner cursor-pointer">
+                                    + {preset}
+                                </button>
+                            ))}
+                        </div>
 
                         {offlineApps.length > 0 && (
                             <div className="mt-2 border-t border-[var(--panel-border)] pt-4 flex flex-col gap-2">
@@ -257,20 +293,45 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </form>
                         {showSuggestions && <div className="fixed inset-0 z-20" onClick={() => setShowSuggestions(false)} />}
                     </div>
+                    
+                    <div className="flex flex-wrap gap-2 mt-2 mb-2 items-center z-10">
+                        <span className="text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest mr-1">Quick Target:</span>
+                        {['YouTube', 'Discord', 'Netflix', 'Twitter', 'Steam', 'TikTok', 'Instagram'].map(app => (
+                            <button
+                                key={app} type="button"
+                                onClick={() => handleQuickAdd(app)}
+                                className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-[10px] sm:text-xs font-bold transition-all shadow-inner cursor-pointer"
+                            >
+                                + {app}
+                            </button>
+                        ))}
+                    </div>
 
                     <div className="mt-8 flex flex-col flex-1 min-h-0">
-                        <div className="flex items-center justify-between px-1 sm:px-2 mb-3 text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest">
-                            <span>Target App</span>
-                            <span>Enforcement Rule</span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 sm:px-2 mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <FilterIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text)] opacity-50" />
+                                    <select value={ruleFilter} onChange={(e) => setRuleFilter(e.target.value as any)} className="pl-8 pr-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] rounded-lg text-xs font-bold text-[var(--text)] opacity-70 hover:opacity-100 outline-none focus:border-[rgb(var(--a1))] transition-colors appearance-none cursor-pointer">
+                                        <option value="all">All Rules</option>
+                                        <option value="block">Hard Blocks Only</option>
+                                        <option value="timer">Time Limits Only</option>
+                                    </select>
+                                </div>
+                                <Input type="text" value={ruleSearchQuery} onChange={(e) => setRuleSearchQuery(e.target.value)} placeholder="Filter rules..." className="h-8 text-xs w-32 sm:w-40 rounded-lg px-3" />
+                            </div>
+                            <button type="button" onClick={handleClearAllRules} disabled={Object.keys(blockList).length === 0} className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-red-400 hover:text-red-500 hover:bg-red-500/10 px-2 py-1 rounded transition-colors uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+                                <TrashIcon className="w-3.5 h-3.5" /> Clear All
+                            </button>
                         </div>
                         <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
-                            {Object.entries(blockList).map(([app, rule]) => (
+                            {filteredRules.map(([app, rule]) => (
                                 <div key={app} onContextMenu={(e) => onContextMenu?.(e, app)} className="flex items-center justify-between bg-[var(--bg)] border border-[var(--panel-border)] p-3 sm:p-4 rounded-xl text-sm group transition-all hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg cursor-context-menu">
                                     <div className="flex items-center gap-3 sm:gap-4 overflow-hidden pr-2">
                                         <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[var(--panel-bg)] rounded-lg sm:rounded-xl border border-[var(--panel-border)] p-1 sm:p-1.5 flex-shrink-0 drop-shadow-md shadow-inner">
                                             {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
                                         </div>
-                                        <span className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide truncate">{app}</span>
+                                        <span className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide truncate" title={app}>{app}</span>
                                     </div>
                                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                                         {rule === 'fully_blocked' ? (
@@ -284,11 +345,11 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                     </div>
                                 </div>
                             ))}
-                            {Object.keys(blockList).length === 0 && (
+                            {filteredRules.length === 0 && (
                                 <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-center border-2 border-dashed border-[rgba(var(--a1),0.2)] rounded-xl bg-gradient-to-b from-[rgba(var(--a1),0.05)] to-transparent">
-                                    <span className="text-3xl mb-3 opacity-90 drop-shadow-[0_0_10px_rgba(var(--a1),0.5)]">🛡️</span>
-                                    <span className="text-sm text-[rgb(var(--a1))] opacity-90 font-black tracking-widest">SYSTEM UNRESTRAINED</span>
-                                    <span className="text-xs text-[var(--text)] opacity-50 mt-2 font-medium">Add a rule above to engage protection.</span>
+                                    <ShieldAlert className="w-10 h-10 mb-3 opacity-40 text-[var(--text)]" />
+                                    <span className="text-sm text-[var(--text)] opacity-70 font-black tracking-widest uppercase">No Rules Found</span>
+                                    <span className="text-xs text-[var(--text)] opacity-40 mt-1 font-medium">{Object.keys(blockList).length === 0 ? 'Add a rule above to engage protection.' : 'Adjust your filters to see more rules.'}</span>
                                 </div>
                             )}
                         </div>
