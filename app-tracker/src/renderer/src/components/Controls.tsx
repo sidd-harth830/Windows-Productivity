@@ -1,10 +1,56 @@
-import React, { useState, useMemo } from 'react'
-import { GenericAppIcon, X, Clock, ShieldBan, ShieldAlert, FolderOpen } from './Icons'
+import React, { useState, useMemo, useRef, useCallback } from 'react'
+import { GenericAppIcon, X, Clock, ShieldBan, ShieldAlert, FolderOpen, Check } from './Icons'
 import { Switch } from '../switch'
 import { Input } from '../input'
 
 const TrashIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>;
 const FilterIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>;
+const EditIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>;
+
+const CircularDial = ({ value, min, max, onChange, step = 5 }: any) => {
+    const svgRef = useRef<SVGSVGElement>(null);
+    
+    const handleInteract = useCallback((e: any) => {
+        if (!svgRef.current) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const rect = svgRef.current.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        
+        let angle = Math.atan2(clientY - cy, clientX - cx) * 180 / Math.PI;
+        let shifted = angle + 90;
+        if (shifted < 0) shifted += 360;
+        
+        const percentage = shifted / 360;
+        let newVal = Math.round((min + percentage * (max - min)) / step) * step;
+        
+        if (value <= min + (max - min) * 0.15 && newVal >= max - (max - min) * 0.15) newVal = min;
+        else if (value >= max - (max - min) * 0.15 && newVal <= min + (max - min) * 0.15) newVal = max;
+        
+        onChange(Math.max(min, Math.min(max, newVal)));
+    }, [value, min, max, step, onChange]);
+
+    const onPointerDown = (e: React.PointerEvent) => { (e.target as Element).setPointerCapture(e.pointerId); handleInteract(e); };
+    const onPointerMove = (e: React.PointerEvent) => { if (e.buttons > 0) handleInteract(e); };
+    const onPointerUp = (e: React.PointerEvent) => { (e.target as Element).releasePointerCapture(e.pointerId); };
+
+    const percentage = (value - min) / (max - min);
+    const r = 38; const cx = 50; const cy = 50;
+    const dashArray = 2 * Math.PI * r;
+    const dashOffset = dashArray - percentage * dashArray;
+    const knobAngle = (percentage * 360 - 90) * Math.PI / 180;
+
+    return (
+        <svg ref={svgRef} viewBox="0 0 100 100" className="w-20 h-20 sm:w-24 sm:h-24 cursor-pointer touch-none drop-shadow-[0_0_12px_rgba(var(--a1),0.25)] hover:scale-105 transition-transform" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+            <circle cx={cx} cy={cy} r={r} fill="transparent" stroke="var(--panel-border)" strokeWidth="8" opacity="0.5" />
+            <circle cx={cx} cy={cy} r={r} fill="transparent" stroke="rgb(var(--a1))" strokeWidth="8" strokeDasharray={dashArray} strokeDashoffset={dashOffset} strokeLinecap="round" style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }} />
+            <circle cx={cx + r * Math.cos(knobAngle)} cy={cy + r * Math.sin(knobAngle)} r="8" fill="var(--bg)" stroke="rgb(var(--a1))" strokeWidth="4" className="shadow-lg pointer-events-none" />
+            <text x="50" y="56" textAnchor="middle" fill="var(--text)" fontSize="18" fontWeight="900" className="pointer-events-none drop-shadow-md">{value}</text>
+        </svg>
+    );
+};
 
 export type BlockRule = 'fully_blocked' | number;
 
@@ -29,6 +75,8 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
     const [offlineMinutes, setOfflineMinutes] = useState<number>(30);
     const [ruleSearchQuery, setRuleSearchQuery] = useState<string>('');
     const [ruleFilter, setRuleFilter] = useState<'all' | 'block' | 'timer'>('all');
+    const [editingRuleApp, setEditingRuleApp] = useState<string | null>(null);
+    const [editingRuleLimit, setEditingRuleLimit] = useState<number>(30);
 
     const handleToggleFocus = (checked: boolean) => {
         setIsFocusMode(checked);
@@ -73,6 +121,16 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         setBlockList({});
         if (window.api && window.api.updateBlockList) window.api.updateBlockList({});
         showToast('Rules Cleared', 'All enforcement rules have been removed.');
+    };
+
+    const saveEditedTimer = (app: string) => {
+        if (editingRuleLimit > 0) {
+            const updatedList = { ...blockList, [app]: editingRuleLimit * 60 };
+            setBlockList(updatedList);
+            if (window.api && window.api.updateBlockList) window.api.updateBlockList(updatedList);
+            setEditingRuleApp(null);
+            showToast('Rule Updated', `Limit for ${app} changed to ${editingRuleLimit}m.`);
+        }
     };
 
     const filteredSuggestions = availableApps.filter(app =>
@@ -164,31 +222,23 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </div>
                         </div>
 
-                        <form onSubmit={handleAddOfflineTime} className="flex flex-col gap-3 relative z-30 mt-2">
-                            <Input
-                                type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
-                                placeholder="Activity (e.g., Reading Book)"
-                                className="h-12 sm:h-14 border-2 rounded-xl px-4 sm:px-5 text-sm sm:text-base font-bold" required
-                            />
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1.5 w-full sm:w-1/2">
-                                    <button type="button" onClick={() => setOfflineMinutes(Math.max(1, offlineMinutes - 5))} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
-                                        -
-                                    </button>
-                                    <div className="flex items-center justify-center flex-1 gap-1">
-                                        <input type="number" min="1" value={offlineMinutes} onChange={(e) => setOfflineMinutes(Number(e.target.value) || 0)} className="w-10 sm:w-12 bg-transparent text-[rgb(var(--a1))] text-right font-black text-lg sm:text-xl focus:outline-none drop-shadow-[0_0_5px_rgba(var(--a1),0.3)] [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]" required />
-                                        <span className="text-[var(--text)] opacity-50 font-bold text-xs mt-1">m</span>
-                                    </div>
-                                    <button type="button" onClick={() => setOfflineMinutes(offlineMinutes + 5)} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
-                                        +
-                                    </button>
-                                </div>
-                                <button type="submit" className="w-full sm:w-1/2 h-12 sm:h-[56px] bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 py-0 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
-                                    ADD TIME
+                        <form onSubmit={handleAddOfflineTime} className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 relative z-30 mt-3 bg-[var(--bg)] p-4 sm:p-5 rounded-2xl border border-[var(--panel-border)] shadow-inner">
+                            <div className="flex flex-col items-center justify-center shrink-0">
+                                <CircularDial value={offlineMinutes} min={5} max={180} step={5} onChange={setOfflineMinutes} />
+                                <span className="text-[9px] uppercase tracking-widest font-black opacity-40 mt-2">Minutes</span>
+                            </div>
+                            <div className="flex flex-col w-full gap-3">
+                                <Input
+                                    type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
+                                    placeholder="Activity (e.g., Reading Book)"
+                                    className="h-12 border-2 rounded-xl px-4 text-sm font-bold w-full" required
+                                />
+                                <button type="submit" className="w-full h-12 bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] hover:brightness-125 text-[var(--bg)] px-6 rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)] border-transparent">
+                                    LOG OFFLINE TIME
                                 </button>
                             </div>
                         </form>
-
+                        
                         <div className="flex flex-wrap gap-2 mt-2">
                             {['Reading', 'Meeting', 'Workout', 'Studying', 'Brainstorming'].map(preset => (
                                 <button key={preset} type="button" onClick={() => { setOfflineActivity(preset); setOfflineMinutes(30); }} className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-xs font-bold transition-all shadow-inner cursor-pointer">
@@ -293,7 +343,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </form>
                         {showSuggestions && <div className="fixed inset-0 z-20" onClick={() => setShowSuggestions(false)} />}
                     </div>
-
+                    
                     <div className="flex flex-wrap gap-2 mt-2 mb-2 items-center z-10">
                         <span className="text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest mr-1">Quick Target:</span>
                         {['YouTube', 'Discord', 'Netflix', 'Twitter', 'Steam', 'TikTok', 'Instagram'].map(app => (
@@ -325,26 +375,52 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </button>
                         </div>
                         <div className="flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
-                            {filteredRules.map(([app, rule]) => (
-                                <div key={app} onContextMenu={(e) => onContextMenu?.(e, app)} className="flex items-center justify-between bg-[var(--bg)] border border-[var(--panel-border)] p-3 sm:p-4 rounded-xl text-sm group transition-all hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg cursor-context-menu">
-                                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden pr-2">
-                                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[var(--panel-bg)] rounded-lg sm:rounded-xl border border-[var(--panel-border)] p-1 sm:p-1.5 flex-shrink-0 drop-shadow-md shadow-inner">
-                                            {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
+                            {filteredRules.map(([app, rule]) => {
+                                const isEditing = editingRuleApp === app;
+                                return (
+                                    <div key={app} onContextMenu={(e) => onContextMenu?.(e, app)} className="flex items-center justify-between bg-[var(--bg)] border border-[var(--panel-border)] p-3 sm:p-4 rounded-xl text-sm group transition-all hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg cursor-context-menu">
+                                        <div className="flex items-center gap-3 sm:gap-4 overflow-hidden pr-2">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[var(--panel-bg)] rounded-lg sm:rounded-xl border border-[var(--panel-border)] p-1 sm:p-1.5 flex-shrink-0 drop-shadow-md shadow-inner">
+                                                {appIcons[app] ? <img src={appIcons[app]} alt="" className="max-w-full max-h-full object-contain" /> : <GenericAppIcon />}
+                                            </div>
+                                            <span className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide truncate" title={app}>{app}</span>
                                         </div>
-                                        <span className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide truncate" title={app}>{app}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                                        {rule === 'fully_blocked' ? (
-                                            <span className="text-[10px] sm:text-xs text-[rgb(var(--a2))] bg-[rgba(var(--a2),0.1)] px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-[rgba(var(--a2),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a2),0.2)]">HARD BLOCKED</span>
+                                        {isEditing ? (
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center justify-between bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-lg px-1 py-0.5 shadow-inner">
+                                                    <button onClick={() => setEditingRuleLimit(Math.max(5, editingRuleLimit - 5))} className="w-6 h-6 flex items-center justify-center hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold rounded">-</button>
+                                                    <input type="number" min="5" value={editingRuleLimit} onChange={(e) => setEditingRuleLimit(Number(e.target.value) || 5)} className="w-10 bg-transparent text-[rgb(var(--a1))] text-center font-bold text-sm outline-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                                                    <button onClick={() => setEditingRuleLimit(editingRuleLimit + 5)} className="w-6 h-6 flex items-center justify-center hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold rounded">+</button>
+                                                </div>
+                                                <button onClick={() => saveEditedTimer(app)} className="p-1.5 bg-[rgb(var(--a1))] text-[var(--bg)] rounded-md shadow-md hover:brightness-110 cursor-pointer transition-all">
+                                                    <Check className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={3} />
+                                                </button>
+                                                <button onClick={() => setEditingRuleApp(null)} className="p-1.5 bg-[var(--panel-border)] text-[var(--text)] rounded-md hover:bg-opacity-80 cursor-pointer transition-all">
+                                                    <X className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2.5} />
+                                                </button>
+                                            </div>
                                         ) : (
-                                            <span className="text-[10px] sm:text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-[rgba(var(--a1),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a1),0.2)]">{(rule / 60)}M DAILY LIMIT</span>
+                                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                                                {rule === 'fully_blocked' ? (
+                                                    <span className="text-[10px] sm:text-xs text-[rgb(var(--a2))] bg-[rgba(var(--a2),0.1)] px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-[rgba(var(--a2),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a2),0.2)]">HARD BLOCKED</span>
+                                                ) : (
+                                                    <span className="text-[10px] sm:text-xs text-[rgb(var(--a1))] bg-[rgba(var(--a1),0.1)] px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg border border-[rgba(var(--a1),0.3)] font-black tracking-widest drop-shadow-[0_0_5px_rgba(var(--a1),0.2)]">{(rule / 60)}M DAILY LIMIT</span>
+                                                )}
+                                                <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                    {rule !== 'fully_blocked' && (
+                                                        <button onClick={() => { setEditingRuleApp(app); setEditingRuleLimit(rule as number / 60); }} className="text-[var(--text)] hover:text-[rgb(var(--a1))] transition-colors cursor-pointer p-1.5 rounded-md hover:bg-[rgba(var(--a1),0.1)]">
+                                                            <EditIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => handleRemoveApp(app)} className="text-[var(--text)] hover:text-[rgb(var(--a2))] transition-colors cursor-pointer p-1.5 rounded-md hover:bg-[rgba(var(--a2),0.1)]">
+                                                        <X className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={2.5} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
-                                        <button onClick={() => handleRemoveApp(app)} className="text-[var(--text)] opacity-30 hover:opacity-100 hover:text-[rgb(var(--a2))] transition-colors cursor-pointer p-2 rounded-md hover:bg-[rgba(var(--a2),0.15)] group-hover:opacity-100">
-                                            <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-                                        </button>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                             {filteredRules.length === 0 && (
                                 <div className="flex flex-col items-center justify-center h-full min-h-[150px] text-center border-2 border-dashed border-[rgba(var(--a1),0.2)] rounded-xl bg-gradient-to-b from-[rgba(var(--a1),0.05)] to-transparent">
                                     <ShieldAlert className="w-10 h-10 mb-3 opacity-40 text-[var(--text)]" />
