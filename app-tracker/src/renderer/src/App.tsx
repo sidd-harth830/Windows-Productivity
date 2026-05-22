@@ -36,6 +36,8 @@ const App: React.FC = () => {
   const [focusSessionMinutes, setFocusSessionMinutes] = useState<number>(25);
   const [focusSessionTimeLeft, setFocusSessionTimeLeft] = useState<number>(25 * 60);
   const [isMiniPlayerAlwaysOnTop, setIsMiniPlayerAlwaysOnTop] = useState<boolean>(true);
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [updateReady, setUpdateReady] = useState<boolean>(false);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
   const analyticsRef = useRef<HTMLDivElement>(null);
@@ -122,6 +124,19 @@ const App: React.FC = () => {
         } else {
           toast.info('Focus Mode Disabled', { description: 'Toggled via System Tray.' });
         }
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (window.api && (window.api as any).onUpdateProgress) {
+      (window.api as any).onUpdateProgress((percent: number) => {
+        setUpdateProgress(percent);
+      });
+      (window.api as any).onUpdateComplete(() => {
+        setUpdateProgress(100);
+        setUpdateReady(true);
+        toast.success('Update Ready', { description: 'Restart the application to apply the latest updates.' });
       });
     }
   }, []);
@@ -333,6 +348,11 @@ const App: React.FC = () => {
   };
 
   const handleCheckForUpdates = async () => {
+    if (updateReady) {
+      showToast('Restart Required', 'Please close and restart the application to apply the update.');
+      return;
+    }
+
     if (window.api && (window.api as any).checkForUpdates) {
       showToast('Checking for Updates', 'Contacting the server to find new versions...');
       const result = await (window.api as any).checkForUpdates();
@@ -1413,20 +1433,34 @@ const App: React.FC = () => {
 
           <div className="flex flex-col gap-4">
             <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">System Updates</h3>
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
-              <div>
-                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Check for Updates</h4>
-                <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Verify if a newer version of the application is available for download.</p>
+            <div className="flex flex-col bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Check for Updates</h4>
+                  <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Verify if a newer version of the application is available for download.</p>
+                </div>
+                <div className="flex gap-3 mt-2 lg:mt-0 w-full lg:w-auto shrink-0">
+                  <button
+                    onClick={handleCheckForUpdates}
+                    disabled={updateProgress !== null && !updateReady}
+                    className={`bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all shadow-inner flex items-center justify-center gap-2 ${updateProgress !== null && !updateReady ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[rgba(var(--a1),0.1)] cursor-pointer'}`}
+                  >
+                    <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${updateProgress !== null && !updateReady ? 'animate-spin text-[rgb(var(--a1))]' : ''}`} />
+                    {updateReady ? 'RESTART TO INSTALL' : (updateProgress !== null ? 'DOWNLOADING...' : 'CHECK NOW')}
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-3 mt-2 lg:mt-0 w-full lg:w-auto shrink-0">
-                <button
-                  onClick={handleCheckForUpdates}
-                  className="bg-[var(--panel-bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] text-[var(--text)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-inner flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-                  CHECK NOW
-                </button>
-              </div>
+              {updateProgress !== null && (
+                <div className="w-full flex flex-col gap-1.5 border-t border-[var(--panel-border)] pt-4 mt-1">
+                  <div className="flex justify-between items-center text-xs font-bold text-[var(--text)] opacity-70 tracking-wide uppercase">
+                    <span>{updateReady ? 'Download Complete!' : 'Downloading Update...'}</span>
+                    <span>{Math.round(updateProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-[var(--panel-border)] rounded-full h-2 shadow-inner overflow-hidden">
+                    <div className={`h-full transition-all duration-300 ${updateReady ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-[rgb(var(--a1))] shadow-[0_0_10px_rgba(var(--a1),0.5)]'}`} style={{ width: `${updateProgress}%` }}></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

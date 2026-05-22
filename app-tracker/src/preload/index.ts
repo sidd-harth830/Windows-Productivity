@@ -58,7 +58,9 @@ const api = {
   getHistory: () => ipcRenderer.invoke('get-history'),
 
   // NEW: Check for Updates
-  checkForUpdates: () => ipcRenderer.invoke('check-for-updates')
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  onUpdateProgress: (callback: (percent: number) => void) => ipcRenderer.on('update-progress', (_event, percent) => callback(percent)),
+  onUpdateComplete: (callback: () => void) => ipcRenderer.on('update-complete', () => callback())
 }
 
 if (process.contextIsolated) {

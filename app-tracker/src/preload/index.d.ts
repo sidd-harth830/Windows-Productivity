@@ -22,6 +22,8 @@ declare global {
       closeMiniPlayer: () => void
       onFocusTimerTick: (callback: (data: { active: boolean, timeLeft: number, total: number }) => void) => void
       checkForUpdates: () => Promise<boolean>
+      onUpdateProgress: (callback: (percent: number) => void) => void
+      onUpdateComplete: (callback: () => void) => void
     }
   }
 }

@@ -473,6 +473,10 @@ app.whenReady().then(() => {
       autoUpdater.checkForUpdatesAndNotify();
       autoUpdater.on('update-downloaded', () => {
         new Notification({ title: 'ForgePulse Update Ready', body: 'A new version has been downloaded and will install on restart.' }).show();
+        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-complete'));
+      });
+      autoUpdater.on('download-progress', (progressObj: any) => {
+        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-progress', progressObj.percent));
       });
     } catch (e) {
       console.error('Auto-updater module not found:', e);
