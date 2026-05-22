@@ -188,7 +188,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 </button>
                             </div>
                         </form>
-                        
+
                         <div className="flex flex-wrap gap-2 mt-2">
                             {['Reading', 'Meeting', 'Workout', 'Studying', 'Brainstorming'].map(preset => (
                                 <button key={preset} type="button" onClick={() => { setOfflineActivity(preset); setOfflineMinutes(30); }} className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-xs font-bold transition-all shadow-inner cursor-pointer">
@@ -293,7 +293,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                         </form>
                         {showSuggestions && <div className="fixed inset-0 z-20" onClick={() => setShowSuggestions(false)} />}
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-2 mt-2 mb-2 items-center z-10">
                         <span className="text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest mr-1">Quick Target:</span>
                         {['YouTube', 'Discord', 'Netflix', 'Twitter', 'Steam', 'TikTok', 'Instagram'].map(app => (
