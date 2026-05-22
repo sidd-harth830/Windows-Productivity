@@ -1,23 +1,16 @@
 import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification, powerMonitor } from 'electron'
 import { join } from 'path'
-import fs from 'fs'
-import crypto from 'crypto'
 import { exec } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import * as db from './database' // Fully integrated SQLite database!
 
 let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
 let lastCheckTime: number = Date.now();
-
-// FIX: Setting this to 0 forces an INSTANT UI update on the very first tick!
-let lastUiUpdate: number = 0;
-
-const dataPath = join(app.getPath('userData'), 'usage-data.json');
-const pathsDataPath = join(app.getPath('userData'), 'app-paths.json');
+let lastUiUpdate: number = 0; // 0 forces instant boot update
 
 let appUsage: Record<string, number> = {};
-let appPaths: Record<string, string> = {}; 
 let appIcons: Record<string, string> = {}; 
 
 let isFocusModeEnabled = false;
@@ -25,71 +18,37 @@ let currentBlockList: Record<string, 'fully_blocked' | number> = {};
 let isQuitting = false;
 let tray: Tray | null = null;
 let warningSent: Record<string, boolean> = {};
-let halfWarningSent: Record<string, boolean> = {};
 
+// Preferences
 let trackSystemApps = false;
 let trackSelf = false;
 let hiddenApps: string[] = [];
 let stopTrackingOnIdle = true;
+let isUserIdle = false;
 
+// Focus Session State
 let focusTimerInterval: NodeJS.Timeout | null = null;
 let focusActive = false;
 let focusTimeLeft = 0;
 let focusTotalDuration = 0;
 let miniPlayerWin: BrowserWindow | null = null;
-
-// --- ENCRYPTION ENGINE ---
-const SECRET_KEY = crypto.scryptSync('forgepulse-secure-key-2026', 'salt', 32);
-const ALGORITHM = 'aes-256-cbc';
-
-function encryptData(data: string): string {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ALGORITHM, SECRET_KEY, iv);
-  let encrypted = cipher.update(data, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return iv.toString('hex') + ':' + encrypted;
-}
-
-function decryptData(data: string): string {
-  const parts = data.split(':');
-  const iv = Buffer.from(parts[0], 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, SECRET_KEY, iv);
-  let decrypted = decipher.update(parts[1], 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
-
-function safeReadData(path: string): any {
-  if (!fs.existsSync(path)) return {};
-  const raw = fs.readFileSync(path, 'utf-8');
-  try { return JSON.parse(decryptData(raw)); } catch { try { return JSON.parse(raw); } catch { return {}; } }
-}
-
-let allUsageData = safeReadData(dataPath);
 let todayStr = new Date().toISOString().split('T')[0];
 
-const isOldFormat = Object.keys(allUsageData).length > 0 && Object.keys(allUsageData).some(key => !key.match(/^\d{4}-\d{2}-\d{2}$/));
-if (isOldFormat) {
-  const oldData = { ...allUsageData };
-  allUsageData = { [todayStr]: oldData };
-}
-if (!allUsageData[todayStr]) {
-  allUsageData[todayStr] = {};
-}
-appUsage = allUsageData[todayStr];
-
-appPaths = safeReadData(pathsDataPath);
+// --- 1. Database Initialization ---
+appUsage = db.getUsageForDate(todayStr);
+const metadata = db.getAppMetadata();
+appIcons = metadata.icons;
 
 function checkDateRoll() {
   const currentStr = new Date().toISOString().split('T')[0];
   if (currentStr !== todayStr) {
     todayStr = currentStr;
-    if (!allUsageData[todayStr]) allUsageData[todayStr] = {};
-    appUsage = allUsageData[todayStr];
-    warningSent = {};
+    appUsage = db.getUsageForDate(todayStr);
+    warningSent = {}; // Reset warnings for the new day
   }
 }
 
+// --- 2. IPC Channels ---
 ipcMain.handle('get-initial-data', () => {
   return {
     allUsage: appUsage,
@@ -101,6 +60,7 @@ ipcMain.handle('get-initial-data', () => {
 
 ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => isFocusModeEnabled = enabled);
 ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' | number>) => currentBlockList = rules);
+
 ipcMain.on('update-preferences', (_event, prefs) => {
   trackSystemApps = prefs.trackSystemApps ?? false;
   trackSelf = prefs.trackSelf ?? false;
@@ -108,19 +68,19 @@ ipcMain.on('update-preferences', (_event, prefs) => {
   stopTrackingOnIdle = prefs.stopTrackingOnIdle ?? true;
 });
 
-ipcMain.handle('get-auto-start', () => {
-  return app.getLoginItemSettings().openAtLogin;
-});
-
+// OS Auto-Start Integration
+ipcMain.handle('get-auto-start', () => app.getLoginItemSettings().openAtLogin);
 ipcMain.on('toggle-auto-start', (_event, enabled: boolean) => {
   app.setLoginItemSettings({ openAtLogin: enabled, args: ['--hidden'] });
 });
 
+// Focus Timer Integration
 ipcMain.on('start-focus-timer', (_event, minutes: number) => {
   focusActive = true;
   focusTotalDuration = minutes * 60;
   focusTimeLeft = minutes * 60;
   isFocusModeEnabled = true; // Auto-engage global blocking
+  
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: focusActive, timeLeft: focusTimeLeft, total: focusTotalDuration }));
 
   if (!focusTimerInterval) {
@@ -142,6 +102,7 @@ ipcMain.on('stop-focus-timer', () => {
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: false, timeLeft: focusTimeLeft, total: focusTotalDuration }));
 });
 
+// Mini Player Window
 ipcMain.on('open-mini-player', () => {
   if (miniPlayerWin) { miniPlayerWin.focus(); return; }
   miniPlayerWin = createMiniPlayerWindow();
@@ -152,13 +113,13 @@ ipcMain.on('close-mini-player', () => {
 });
 
 ipcMain.handle('save-csv', async (_event, csvContent: string) => {
-  const dateStr = new Date().toISOString().split('T')[0];
   const { filePath } = await dialog.showSaveDialog({
     title: 'Export Usage Data',
-    defaultPath: `ForgePulse-Analytics-${dateStr}.csv`,
+    defaultPath: `Zeitra-Analytics-${todayStr}.csv`,
     filters: [{ name: 'CSV Files', extensions: ['csv'] }]
   });
   if (filePath) {
+    const fs = require('fs');
     await fs.promises.writeFile(filePath, csvContent, 'utf-8');
     return true;
   }
@@ -169,69 +130,38 @@ ipcMain.handle('add-offline-time', async (_event, activityName: string, minutes:
   try {
     const displayAppName = activityName.trim() + ' (Offline)';
     const seconds = minutes * 60;
-    appUsage[displayAppName] = (appUsage[displayAppName] || 0) + seconds;
-    allUsageData[todayStr] = appUsage;
-    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData)));
-    lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
+    db.upsertUsage(todayStr, displayAppName, seconds);
+    appUsage = db.getUsageForDate(todayStr); // Sync memory cache
     
-    // Force an instant update to the frontend immediately!
     BrowserWindow.getAllWindows().forEach(win => {
-      win.webContents.send('window-update', {
-        name: lastApp || 'Desktop',
-        title: '',
-        focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
-        allUsage: { ...appUsage }, // Forced clone ensures React triggers Dashboard rerender
-        appIcons: appIcons
-      });
+      win.webContents.send('window-update', { name: lastApp || 'Desktop', title: '', allUsage: { ...appUsage } });
     });
-
     return true;
-  } catch (e) {
-    return false;
-  }
+  } catch (e) { return false; }
 });
 
 ipcMain.handle('remove-app-usage', async (_event, appName: string) => {
   try {
-    delete appUsage[appName];
-    allUsageData[todayStr] = appUsage;
-    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData)));
-    lastUiUpdate = 0; // Trigger an immediate UI refresh on the next tracking tick
+    db.deleteAppUsage(todayStr, appName);
+    appUsage = db.getUsageForDate(todayStr); 
     
-    // Force an instant update to the frontend immediately!
     BrowserWindow.getAllWindows().forEach(win => {
-      win.webContents.send('window-update', {
-        name: lastApp || 'Desktop',
-        title: '',
-        focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
-        allUsage: { ...appUsage },
-        appIcons: appIcons
-      });
+      win.webContents.send('window-update', { name: lastApp || 'Desktop', title: '', allUsage: { ...appUsage } });
     });
     return true;
-  } catch (e) {
-    return false;
-  }
+  } catch (e) { return false; }
 });
 
 ipcMain.handle('refresh-app-icon', async (_event, appName: string) => {
   try {
-    const exePath = appPaths[appName];
+    const exePath = db.getAppPath(appName);
     if (exePath) {
       const nativeIcon = await app.getFileIcon(exePath, { size: 'large' });
-      appIcons[appName] = nativeIcon.toDataURL();
-      await fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths)));
+      const iconBase64 = nativeIcon.toDataURL();
+      appIcons[appName] = iconBase64;
+      db.upsertAppMetadata({ appName, iconBase64 });
       
-      // Force UI Update
-      BrowserWindow.getAllWindows().forEach(win => {
-        win.webContents.send('window-update', {
-          name: lastApp || 'Desktop',
-          title: '',
-          focusTime: lastApp ? (appUsage[lastApp] || 0) : 0,
-          allUsage: { ...appUsage },
-          appIcons: { ...appIcons }
-        });
-      });
+      BrowserWindow.getAllWindows().forEach(win => { win.webContents.send('icon-update', { appName, icon: iconBase64 }); });
       return true;
     }
     return false;
@@ -240,20 +170,10 @@ ipcMain.handle('refresh-app-icon', async (_event, appName: string) => {
 
 ipcMain.handle('clear-usage-data', async () => {
   try {
-    allUsageData = {};
-    allUsageData[todayStr] = {};
-    appUsage = allUsageData[todayStr];
-    await fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData)));
-    lastUiUpdate = 0; // Trigger an immediate UI refresh
-    
+    db.clearAllUsage();
+    appUsage = {};
     BrowserWindow.getAllWindows().forEach(win => {
-      win.webContents.send('window-update', {
-        name: lastApp || 'Desktop',
-        title: '',
-        focusTime: 0,
-        allUsage: { ...appUsage },
-        appIcons: appIcons
-      });
+      win.webContents.send('window-update', { name: lastApp || 'Desktop', title: '', allUsage: {} });
     });
     return true;
   } catch (e) { return false; }
@@ -275,24 +195,21 @@ ipcMain.handle('browse-for-exe', async () => {
   if (!appIcons[displayAppName]) {
     try {
       const nativeIcon = await app.getFileIcon(exePath, { size: 'large' });
-      appIcons[displayAppName] = nativeIcon.toDataURL();
-      appPaths[displayAppName] = exePath;
-      await fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths)));
+      const iconBase64 = nativeIcon.toDataURL();
+      appIcons[displayAppName] = iconBase64;
+      db.upsertAppMetadata({ appName: displayAppName, exePath, iconBase64 });
       
-      // Force an update so the frontend gets the new icon immediately
       BrowserWindow.getAllWindows().forEach(win => {
-        win.webContents.send('window-update', { name: lastApp || 'Desktop', title: '', focusTime: lastApp ? (appUsage[lastApp] || 0) : 0, allUsage: { ...appUsage }, appIcons: { ...appIcons } });
+        win.webContents.send('icon-update', { appName: displayAppName, icon: iconBase64 });
       });
     } catch (e) {}
   }
-
   return displayAppName;
 });
 
-ipcMain.handle('get-history', () => {
-  return allUsageData;
-});
+ipcMain.handle('get-history', () => db.getAllUsage());
 
+// --- 3. Utilities ---
 function cleanAppName(rawName: string): string {
   let clean = rawName.replace(/\.exe$/i, '').trim();
   if (clean.toLowerCase() === 'code') return 'VS Code';
@@ -307,6 +224,7 @@ function formatTime(totalSeconds: number): string {
   return `${minutes}m`;
 }
 
+// --- 4. The Precision Tracking Engine ---
 async function startTracking(mainWindow: BrowserWindow) {
   try {
     const activeWin = (await import('active-win')).default;
@@ -328,23 +246,26 @@ async function startTracking(mainWindow: BrowserWindow) {
 
           checkDateRoll();
 
-          // WARM-UP CACHE: Save new paths instantly
+          // INTELLIGENT IDLE TRACKING via Native OS powerMonitor
+          const idleSeconds = powerMonitor.getSystemIdleTime();
+          isUserIdle = stopTrackingOnIdle && idleSeconds >= 300; // Away for 5 mins
+
+          // Cache missing icons instantly to DB
           if (!appIcons[displayAppName] && rawPath) {
             try {
               const nativeIcon = await app.getFileIcon(rawPath, { size: 'large' });
               const iconDataURL = nativeIcon.toDataURL();
               appIcons[displayAppName] = iconDataURL; 
-              appPaths[displayAppName] = rawPath;
+              db.upsertAppMetadata({ appName: displayAppName, exePath: rawPath, iconBase64: iconDataURL });
 
               BrowserWindow.getAllWindows().forEach(win => {
                 win.webContents.send('icon-update', { appName: displayAppName, icon: iconDataURL });
               });
-
-              fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths))).catch(()=>{});
             } catch (e) {}
           }
 
-          if (isFocusModeEnabled) {
+          // Focus Block Logic
+          if (isFocusModeEnabled && !isUserIdle) {
             let ruleToApply: 'fully_blocked' | number | null = null;
             for (const [blockedApp, rule] of Object.entries(currentBlockList)) {
               const term = blockedApp.toLowerCase();
@@ -360,14 +281,14 @@ async function startTracking(mainWindow: BrowserWindow) {
 
               if (isHardBlocked || isTimeExpired) {
                 exec(`taskkill /F /IM ${actualExe} /T`, () => {});
-                return; 
+                return; // Guard prevents tracking
               }
 
               if (!isHardBlocked && typeof ruleToApply === 'number') {
                 const timeLeft = ruleToApply - timeSpentToday;
                 if (timeLeft <= 300 && timeLeft > 0 && !warningSent[displayAppName]) {
                   new Notification({
-                    title: 'Time Limit Approaching',
+                    title: 'Zeitra - Time Limit Approaching',
                     body: `You have less than 5 minutes remaining for ${displayAppName}.`
                   }).show();
                   warningSent[displayAppName] = true;
@@ -378,23 +299,24 @@ async function startTracking(mainWindow: BrowserWindow) {
 
           const lowerPath = rawPath.toLowerCase();
           const isSystemApp = lowerPath.includes('\\windows\\') || lowerPath.includes('system32') || lowerPath.includes('windowsapps') || displayAppName.toLowerCase() === 'windows explorer' || displayAppName.toLowerCase() === 'searchhost';
-          
-          // FIX: Added 'app-tracker' to catch the dev environment name!
-          const isSelfApp = displayAppName.toLowerCase().includes('forgepulse') || displayAppName.toLowerCase().includes('electron') || displayAppName.toLowerCase().includes('app-tracker');
+          const isSelfApp = displayAppName.toLowerCase().includes('zeitra') || displayAppName.toLowerCase().includes('forgepulse') || displayAppName.toLowerCase().includes('electron') || displayAppName.toLowerCase().includes('app-tracker');
 
           let shouldTrack = true;
           if (!trackSystemApps && isSystemApp) shouldTrack = false;
           if (!trackSelf && isSelfApp) shouldTrack = false;
           if (hiddenApps.includes(displayAppName)) shouldTrack = false;
 
-          if (shouldTrack) {
-            appUsage[displayAppName] = (appUsage[displayAppName] || 0) + timeDiff;
+          // Track Time to SQLite DB if not idle
+          if (!isUserIdle && shouldTrack) {
+            db.upsertUsage(todayStr, displayAppName, timeDiff);
+            appUsage = db.getUsageForDate(todayStr); // Keep memory synced with DB
+
             if (tray) {
-              const tip = `ForgePulse\nActive: ${displayAppName} (${formatTime(appUsage[displayAppName])})`;
+              const tip = `Zeitra\nActive: ${displayAppName} (${formatTime(appUsage[displayAppName])})`;
               tray.setToolTip(tip.length > 127 ? tip.substring(0, 124) + '...' : tip);
             }
           } else if (tray) {
-            tray.setToolTip(isUserIdle ? 'ForgePulse - Idle (Tracking Paused)' : 'ForgePulse - Tracking System Process');
+            tray.setToolTip(isUserIdle ? 'Zeitra - Idle (Tracking Paused)' : 'Zeitra - Tracking System Process');
           }
 
           const appChanged = lastApp !== displayAppName;
@@ -402,24 +324,18 @@ async function startTracking(mainWindow: BrowserWindow) {
 
           const timeSinceLastUpdate = now - lastUiUpdate;
           if (appChanged || timeSinceLastUpdate >= 60000) {
-            allUsageData[todayStr] = appUsage;
-            const liveUsageData = { ...appUsage };
-
             mainWindow.webContents.send('window-update', {
               name: displayAppName, 
               title: windowInfo.title,
-              allUsage: liveUsageData,
+              allUsage: { ...appUsage },
             });
-
-            fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData))).catch(()=>{});
             lastUiUpdate = now;
           }
-
         }
       } catch (err) {}
     };
 
-    await track(); // Instantly track on startup to bypass the 2-second UI loading delay
+    await track(); 
     trackingInterval = setInterval(track, 2000);
   } catch (error) {}
 }
@@ -449,7 +365,7 @@ function createMiniPlayerWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 250, height: 180, resizable: false,
     alwaysOnTop: true, frame: false, transparent: true,
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true }
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: false }
   });
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) { win.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#mini'); } 
@@ -459,15 +375,19 @@ function createMiniPlayerWindow(): BrowserWindow {
   return win;
 }
 
-
+// --- 5. Boot Sequence ---
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');
   
-  // INSTANT PRE-FETCH CACHE (Moved here to ensure Electron is fully initialized)
-  for (const [appName, exePath] of Object.entries(appPaths)) {
-    if (exePath) {
+  // Warm-up Cache: Ensure all previously tracked apps have icons loaded to DB
+  for (const [appName, exePath] of Object.entries(metadata.paths)) {
+    if (exePath && !appIcons[appName]) { 
       app.getFileIcon(exePath, { size: 'large' })
-        .then(icon => appIcons[appName] = icon.toDataURL())
+        .then(icon => {
+            const iconBase64 = icon.toDataURL();
+            appIcons[appName] = iconBase64;
+            db.upsertAppMetadata({ appName, iconBase64 });
+        })
         .catch(() => {}); 
     }
   }
@@ -478,13 +398,13 @@ app.whenReady().then(() => {
 
   tray = new Tray(icon);
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'ForgePulse Engine Live', enabled: false },
+    { label: 'Zeitra Engine Live', enabled: false },
     { type: 'separator' },
     { label: 'Show Dashboard', click: () => mainWindow.show() },
-    { label: 'Quit ForgePulse', click: () => { isQuitting = true; app.quit(); } }
+    { label: 'Quit Zeitra', click: () => { isQuitting = true; app.quit(); } }
   ]);
   
-  tray.setToolTip('ForgePulse - Tracking Active');
+  tray.setToolTip('Zeitra - Tracking Active');
   tray.setContextMenu(contextMenu);
   tray.on('double-click', () => mainWindow.show());
 

@@ -68,7 +68,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    
+
     root.classList.remove('light', 'dark');
     root.classList.add(effectiveTheme);
   }, [themePref, systemTheme]);
@@ -135,7 +135,7 @@ const App: React.FC = () => {
   const isAppValid = (appName: string) => {
     if (hiddenApps.includes(appName) && !showIgnoredApps) return false;
     const lower = appName.toLowerCase();
-    
+
     if (!trackSelf && (lower.includes('zeitra') || lower.includes('forgepulse') || lower.includes('electron') || lower.includes('app-tracker'))) {
       return false;
     }
@@ -195,7 +195,7 @@ const App: React.FC = () => {
       window.api.onFocusTimerTick((data: { active: boolean, timeLeft: number, total: number }) => {
         // Show a toast only if we transition from active to inactive and time is up
         if (focusSessionActive && !data.active && data.timeLeft === 0) {
-           showToast('Session Complete', 'Great job! Take a short break to recharge.');
+          showToast('Session Complete', 'Great job! Take a short break to recharge.');
         }
         setFocusSessionActive(data.active);
         setFocusSessionTimeLeft(data.timeLeft);
@@ -234,11 +234,11 @@ const App: React.FC = () => {
 
   const handleExportCsv = async () => {
     let fullHistory = historyData;
-    
+
     if (Object.keys(fullHistory).length === 0 && window.api && (window.api as any).getHistory) {
       fullHistory = await (window.api as any).getHistory();
     }
-    
+
     const today = new Date().toISOString().split('T')[0];
     if (activeApp) {
       fullHistory = { ...fullHistory, [today]: activeApp.allUsage };
@@ -250,7 +250,7 @@ const App: React.FC = () => {
     const dates = Object.keys(fullHistory)
       .filter(d => d >= exportStartDate && d <= exportEndDate)
       .sort((a, b) => b.localeCompare(a));
-    
+
     if (dates.length === 0) {
       showToast('Export Failed', 'No usage data found for the selected date range.');
       return;
@@ -288,7 +288,7 @@ const App: React.FC = () => {
       }
     }
   };
-  
+
   const handleAutoStartToggle = (checked: boolean) => {
     setAutoStart(checked);
     if (window.api && (window.api as any).toggleAutoStart) (window.api as any).toggleAutoStart(checked);
@@ -343,9 +343,9 @@ const App: React.FC = () => {
   });
 
   const analyticsChartData = Object.entries(analyticsUsage)
-      .filter(([name, time]) => isAppValid(name) && (time as number) >= 60)
-      .map(([name, time]) => ({ name, time: time as number }))
-      .sort((a, b) => b.time - a.time);
+    .filter(([name, time]) => isAppValid(name) && (time as number) >= 60)
+    .map(([name, time]) => ({ name, time: time as number }))
+    .sort((a, b) => b.time - a.time);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -418,7 +418,7 @@ const App: React.FC = () => {
     return 'Other';
   };
 
-  const calculateProductivityScore = (data: {name: string, time: number}[]) => {
+  const calculateProductivityScore = (data: { name: string, time: number }[]) => {
     let productiveTime = 0;
     let totalTime = 0;
     data.forEach(app => {
@@ -452,7 +452,7 @@ const App: React.FC = () => {
     const cat = categorizeApp(app.name);
     categoryDataMap[cat] = (categoryDataMap[cat] || 0) + app.time;
   });
-  
+
   const pieData = Object.entries(categoryDataMap)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
@@ -463,7 +463,7 @@ const App: React.FC = () => {
   const currentDayOfWeek = new Date().getDay();
   const daysToPadAtEnd = 6 - currentDayOfWeek;
   const totalCells = 16 * 7; // 16 Weeks
-  
+
   for (let i = totalCells - 1 - daysToPadAtEnd; i >= -daysToPadAtEnd; i--) {
     if (i < 0) {
       heatmapDays.push({ dateStr: '', score: 0, hasData: false, isFuture: true });
@@ -530,7 +530,7 @@ const App: React.FC = () => {
 
           <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 hover:border-[rgba(var(--a2),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
             <div className="relative w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a2),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a2),0.2)] p-3">
-               <svg className="w-full h-full text-[rgb(var(--a2))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg className="w-full h-full text-[rgb(var(--a2))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Today's Uptime</span>
@@ -542,7 +542,7 @@ const App: React.FC = () => {
 
           <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
             <div className="relative w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-3">
-               <svg className="w-full h-full text-[rgb(var(--a1))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+              <svg className="w-full h-full text-[rgb(var(--a1))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
             </div>
             <div className="flex flex-col justify-center w-full">
               <div className="flex justify-between items-end mb-1.5">
@@ -584,31 +584,31 @@ const App: React.FC = () => {
                 </Select>
               </div>
             </div>
-        <div className="flex-1 w-full min-h-0 min-w-0 pr-2 sm:pr-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <div className="flex-1 w-full min-h-0 min-w-0 pr-2 sm:pr-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
               {filteredChartData.length > 0 ? (
-            <div className="w-full relative" style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
-              <div className="absolute inset-0">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
-                      <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
-                      <Bar
-                        dataKey="time"
-                        radius={[0, 8, 8, 0]}
-                        barSize={32}
-                        isAnimationActive={true}
-                        animationDuration={1200}
-                        animationEasing="ease-out"
-                        activeBar={{ stroke: 'rgb(var(--a1))', strokeWidth: 2, fill: 'rgba(var(--a1), 0.1)', filter: 'drop-shadow(0 0 8px rgba(var(--a1), 0.5))', cursor: 'pointer' }}
-                      >
-                        {filteredChartData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-              </div>
+                <div className="w-full relative" style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
+                  <div className="absolute inset-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
+                        <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
+                        <Bar
+                          dataKey="time"
+                          radius={[0, 8, 8, 0]}
+                          barSize={32}
+                          isAnimationActive={true}
+                          animationDuration={1200}
+                          animationEasing="ease-out"
+                          activeBar={{ stroke: 'rgb(var(--a1))', strokeWidth: 2, fill: 'rgba(var(--a1), 0.1)', filter: 'drop-shadow(0 0 8px rgba(var(--a1), 0.5))', cursor: 'pointer' }}
+                        >
+                          {filteredChartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={index === 0 ? 'rgb(var(--a2))' : `rgba(var(--a1), ${Math.max(0.3, 1 - (index * 0.1))})`} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
@@ -621,13 +621,13 @@ const App: React.FC = () => {
           </div>
 
           <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col items-center relative overflow-hidden hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
-            
+
             <div className="flex w-full items-center justify-between mb-8 z-10">
               <div className="flex items-center gap-2">
                 <Flame className={`w-5 h-5 sm:w-6 sm:h-6 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse' : 'text-[var(--text)] opacity-50'}`} />
                 <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] tracking-wide">Deep Focus</h3>
               </div>
-              <button 
+              <button
                 onClick={() => { if (window.api && window.api.openMiniPlayer) window.api.openMiniPlayer(); }}
                 className="p-2 bg-[var(--bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-xl shadow-inner"
                 title="Open Mini Player"
@@ -635,7 +635,7 @@ const App: React.FC = () => {
                 <Maximize2 className="w-4 h-4" />
               </button>
             </div>
-            
+
             <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center shrink-0 mb-8 z-10 flex-1">
               <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_12px_rgba(var(--a1),0.3)]">
                 <circle cx="50" cy="50" r="45" stroke="var(--panel-border)" strokeWidth="4" fill="transparent" />
@@ -654,13 +654,13 @@ const App: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="flex w-full items-center gap-3 z-10">
-              <button 
-                onClick={toggleFocusSession} 
+              <button
+                onClick={toggleFocusSession}
                 className={`flex-1 flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm tracking-widest transition-all shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] hover:bg-[rgba(var(--a2),0.1)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
               >
-                {focusSessionActive ? ( <><Square className="w-4 h-4" /> END SESSION</> ) : ( <><Play className="w-4 h-4 fill-current" /> START FOCUS</> )}
+                {focusSessionActive ? (<><Square className="w-4 h-4" /> END SESSION</>) : (<><Play className="w-4 h-4 fill-current" /> START FOCUS</>)}
               </button>
             </div>
           </div>
@@ -717,20 +717,18 @@ const App: React.FC = () => {
       time: app.time
     }));
 
-    const filteredAnalyticsApps = useMemo(() => {
-      return analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
-    }, [analyticsChartData, analyticsSearch]);
+    const filteredAnalyticsApps = analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
 
     const getInsight = () => {
       if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";
-      
+
       const last7Days = Object.keys(historyData).sort().slice(-7);
       let avgScore = 0;
       if (last7Days.length > 0) {
         const totalScore = last7Days.reduce((sum, d) => sum + calculateProductivityScoreForDay(historyData[d]), 0);
         avgScore = Math.round(totalScore / last7Days.length);
       }
-      
+
       const currentScore = calculateProductivityScore(dashboardData);
       let velocityStr = "";
       if (avgScore > 0) {
@@ -778,38 +776,38 @@ const App: React.FC = () => {
                     <PopoverTrigger asChild>
                       <button className="bg-transparent text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[var(--panel-border)] px-3 py-1.5 rounded-md transition-colors text-left min-w-[210px] flex items-center justify-center gap-2">
                         <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        {analyticsStartDate === analyticsEndDate 
+                        {analyticsStartDate === analyticsEndDate
                           ? format(new Date(analyticsStartDate + "T00:00:00"), "MMM d, yyyy")
                           : `${format(new Date(analyticsStartDate + "T00:00:00"), "MMM d, yyyy")} - ${format(new Date(analyticsEndDate + "T00:00:00"), "MMM d, yyyy")}`}
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar 
-                        mode="range" 
+                      <Calendar
+                        mode="range"
                         defaultMonth={(() => {
                           const d = new Date(analyticsStartDate + "T00:00:00");
                           d.setMonth(d.getMonth() - 1);
                           return d;
                         })()}
                         disabled={{ after: new Date() }}
-                        selected={{ from: new Date(analyticsStartDate + "T00:00:00"), to: new Date(analyticsEndDate + "T00:00:00") }} 
+                        selected={{ from: new Date(analyticsStartDate + "T00:00:00"), to: new Date(analyticsEndDate + "T00:00:00") }}
                         onSelect={(range: any) => {
                           if (range?.from) {
-                            const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth()+1).padStart(2,'0')}-${String(range.from.getDate()).padStart(2,'0')}`;
+                            const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth() + 1).padStart(2, '0')}-${String(range.from.getDate()).padStart(2, '0')}`;
                             setAnalyticsStartDate(fromStr);
                             if (range.to) {
-                              const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth()+1).padStart(2,'0')}-${String(range.to.getDate()).padStart(2,'0')}`;
+                              const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth() + 1).padStart(2, '0')}-${String(range.to.getDate()).padStart(2, '0')}`;
                               setAnalyticsEndDate(toStr);
                             } else {
                               setAnalyticsEndDate(fromStr);
                             }
                           }
-                        }} 
-                        initialFocus 
+                        }}
+                        initialFocus
                         numberOfMonths={2}
                       />
                       <div className="p-3 border-t border-[var(--panel-border)]">
-                        <button 
+                        <button
                           onClick={() => {
                             const t = new Date().toISOString().split('T')[0];
                             setAnalyticsStartDate(t);
@@ -845,34 +843,34 @@ const App: React.FC = () => {
             {realTrendData.length > 0 ? (
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
-                      <stop offset="95%" stopColor="rgb(var(--a1))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--panel-border)" tick={<CustomXAxisTick />} tickLine={false} axisLine={false} dy={10} />
-                  <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
-                    content={<CustomTooltip />}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="time" 
-                    stroke="rgb(var(--a1))" 
-                    strokeWidth={4} 
-                    fillOpacity={1} 
-                    fill="url(#colorTime)" 
-                    isAnimationActive={true}
-                    animationDuration={1200}
-                    animationEasing="ease-out"
-                    activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }} 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+                  <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
+                        <stop offset="95%" stopColor="rgb(var(--a1))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--panel-border)" tick={<CustomXAxisTick />} tickLine={false} axisLine={false} dy={10} />
+                    <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
+                      content={<CustomTooltip />}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="time"
+                      stroke="rgb(var(--a1))"
+                      strokeWidth={4}
+                      fillOpacity={1}
+                      fill="url(#colorTime)"
+                      isAnimationActive={true}
+                      animationDuration={1200}
+                      animationEasing="ease-out"
+                      activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
@@ -933,34 +931,35 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 max-h-[400px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 max-h-[400px]">
               {filteredAnalyticsApps.map((app) => {
                 const isActive = lastActiveValidApp === app.name;
                 const isIgnored = hiddenApps.includes(app.name);
                 return (
-                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--bg)] border p-4 sm:p-5 rounded-2xl flex items-center gap-4 shadow-inner transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg'} ${isIgnored ? 'opacity-60 grayscale' : ''}`}>
-                  <div className={`w-12 h-12 rounded-xl bg-[var(--panel-bg)] border flex items-center justify-center p-2 shadow-sm shrink-0 relative ${isActive && !isIgnored ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
-                    {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
-                    {isActive && !isIgnored && (
-                      <span className="absolute -top-1 -right-1 flex h-3 w-3 shrink-0" title="Currently Active">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
-                      </span>
-                    )}
+                  <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--bg)] border p-4 sm:p-5 rounded-2xl flex items-center gap-4 shadow-inner transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg'} ${isIgnored ? 'opacity-60 grayscale' : ''}`}>
+                    <div className={`w-12 h-12 rounded-xl bg-[var(--panel-bg)] border flex items-center justify-center p-2 shadow-sm shrink-0 relative ${isActive && !isIgnored ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
+                      {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
+                      {isActive && !isIgnored && (
+                        <span className="absolute -top-1 -right-1 flex h-3 w-3 shrink-0" title="Currently Active">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className={`text-sm font-bold text-[var(--text)] truncate flex items-center gap-2 ${isIgnored ? 'line-through opacity-50' : 'opacity-90'}`}>
+                        {app.name.length > 20 ? app.name.substring(0, 17) + '...' : app.name}
+                        {isActive && !isIgnored && <span className="text-[9px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 tracking-wider">ACTIVE</span>}
+                        {isIgnored && <span className="text-[9px] text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 tracking-wider">IGNORED</span>}
+                      </p>
+                      <p className={`text-base font-black text-[rgb(var(--a1))] tracking-wide mt-0.5 truncate ${isIgnored ? 'opacity-70' : ''}`}>{formatTime(app.time)} <span className="text-[10px] font-bold text-[var(--text)] opacity-40 uppercase tracking-widest ml-1">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
+                    </div>
                   </div>
-                  <div className="overflow-hidden">
-                    <p className={`text-sm font-bold text-[var(--text)] truncate flex items-center gap-2 ${isIgnored ? 'line-through opacity-50' : 'opacity-90'}`}>
-                      {app.name.length > 20 ? app.name.substring(0, 17) + '...' : app.name}
-                      {isActive && !isIgnored && <span className="text-[9px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 tracking-wider">ACTIVE</span>}
-                      {isIgnored && <span className="text-[9px] text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 tracking-wider">IGNORED</span>}
-                    </p>
-                    <p className={`text-base font-black text-[rgb(var(--a1))] tracking-wide mt-0.5 truncate ${isIgnored ? 'opacity-70' : ''}`}>{formatTime(app.time)} <span className="text-[10px] font-bold text-[var(--text)] opacity-40 uppercase tracking-widest ml-1">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
-                  </div>
-                </div>
-              )})}
+                )
+              })}
               {filteredAnalyticsApps.length === 0 && (
                 <div className="col-span-1 md:col-span-2 bg-[var(--panel-bg)] backdrop-blur-xl border border-dashed border-[var(--panel-border)] p-6 rounded-3xl flex items-center justify-center shadow-lg min-h-[106px]">
-                   <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
+                  <div className="w-full h-full flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
                     <NoData className="w-40 h-40 opacity-40" />
                     <p className="font-bold tracking-widest uppercase text-sm mt-4">No Apps Found</p>
                   </div>
@@ -972,39 +971,39 @@ const App: React.FC = () => {
             <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide mb-4 text-center">Category Breakdown</h3>
             <div className="flex-1 w-full min-h-[180px] relative">
               {pieData.length > 0 ? (
-              <div className="flex-1 w-full h-full flex flex-col">
-                <div className="flex-1 w-full relative min-h-[140px]">
-                  <div className="absolute inset-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        content={({ active, payload }: any) => {
-                          if (active && payload && payload.length) {
-                            const percent = totalCategoryTime > 0 
-                              ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1) 
-                              : '0.0';
-                            return (
-                              <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-3 rounded-xl shadow-2xl z-50">
-                                <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{payload[0].name}</p>
-                                <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">
-                                  {formatTime(payload[0].value)} <span className="text-[var(--text)] opacity-60 ml-1">({percent}%)</span>
-                                </p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="flex-1 w-full h-full flex flex-col">
+                  <div className="flex-1 w-full relative min-h-[140px]">
+                    <div className="absolute inset-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            content={({ active, payload }: any) => {
+                              if (active && payload && payload.length) {
+                                const percent = totalCategoryTime > 0
+                                  ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1)
+                                  : '0.0';
+                                return (
+                                  <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-3 rounded-xl shadow-2xl z-50">
+                                    <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{payload[0].name}</p>
+                                    <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">
+                                      {formatTime(payload[0].value)} <span className="text-[var(--text)] opacity-60 ml-1">({percent}%)</span>
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-4 shrink-0">
+                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-4 shrink-0">
                     {pieData.map((entry, index) => (
                       <div key={entry.name} className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
@@ -1012,7 +1011,7 @@ const App: React.FC = () => {
                       </div>
                     ))}
                   </div>
-              </div>
+                </div>
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center opacity-50 text-[var(--text)]">
                   <NoData className="w-32 h-32 opacity-40" />
@@ -1118,38 +1117,38 @@ const App: React.FC = () => {
                   <PopoverTrigger asChild>
                     <button className="bg-[var(--panel-bg)] border border-[var(--panel-border)] text-xs sm:text-sm text-[var(--text)] font-bold focus:outline-none cursor-pointer hover:bg-[rgba(var(--a1),0.1)] px-3 sm:px-4 py-2 sm:py-3 rounded-xl transition-colors text-left min-w-[180px] sm:min-w-[210px] flex items-center justify-center gap-2 shadow-inner">
                       <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                      {exportStartDate === exportEndDate 
+                      {exportStartDate === exportEndDate
                         ? format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")
                         : `${format(new Date(exportStartDate + "T00:00:00"), "MMM d, yyyy")} - ${format(new Date(exportEndDate + "T00:00:00"), "MMM d, yyyy")}`}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar 
-                      mode="range" 
+                    <Calendar
+                      mode="range"
                       defaultMonth={(() => {
                         const d = new Date(exportStartDate + "T00:00:00");
                         d.setMonth(d.getMonth() - 1);
                         return d;
                       })()}
                       disabled={{ after: new Date() }}
-                      selected={{ from: new Date(exportStartDate + "T00:00:00"), to: new Date(exportEndDate + "T00:00:00") }} 
+                      selected={{ from: new Date(exportStartDate + "T00:00:00"), to: new Date(exportEndDate + "T00:00:00") }}
                       onSelect={(range: any) => {
                         if (range?.from) {
-                          const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth()+1).padStart(2,'0')}-${String(range.from.getDate()).padStart(2,'0')}`;
+                          const fromStr = `${range.from.getFullYear()}-${String(range.from.getMonth() + 1).padStart(2, '0')}-${String(range.from.getDate()).padStart(2, '0')}`;
                           setExportStartDate(fromStr);
                           if (range.to) {
-                            const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth()+1).padStart(2,'0')}-${String(range.to.getDate()).padStart(2,'0')}`;
+                            const toStr = `${range.to.getFullYear()}-${String(range.to.getMonth() + 1).padStart(2, '0')}-${String(range.to.getDate()).padStart(2, '0')}`;
                             setExportEndDate(toStr);
                           } else {
                             setExportEndDate(fromStr);
                           }
                         }
-                      }} 
-                      initialFocus 
+                      }}
+                      initialFocus
                       numberOfMonths={2}
                     />
                     <div className="p-3 border-t border-[var(--panel-border)]">
-                      <button 
+                      <button
                         onClick={() => {
                           const t = new Date().toISOString().split('T')[0];
                           setExportStartDate(t);
@@ -1162,7 +1161,7 @@ const App: React.FC = () => {
                     </div>
                   </PopoverContent>
                 </Popover>
-                <button 
+                <button
                   onClick={handleExportCsv}
                   className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(var(--a1),0.4)] flex items-center justify-center gap-2 shrink-0"
                 >
@@ -1182,7 +1181,7 @@ const App: React.FC = () => {
                   <Switch checked={showIgnoredApps} onCheckedChange={setShowIgnoredApps} />
                   Show in Charts
                 </label>
-                <button 
+                <button
                   onClick={() => { setHiddenApps([]); showToast('Hidden Apps Reset', 'All hidden applications are now being tracked again.'); }}
                   disabled={hiddenApps.length === 0}
                   className="bg-[var(--panel-bg)] disabled:opacity-50 disabled:cursor-not-allowed border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] text-[var(--text)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-inner flex items-center justify-center gap-2"
@@ -1221,7 +1220,7 @@ const App: React.FC = () => {
                 <p className="text-xs sm:text-sm text-red-400/70 mt-0.5 sm:mt-1 max-w-lg font-medium">Permanently delete all recorded application history and offline logs. This cannot be undone.</p>
               </div>
               <div className="flex gap-3 mt-2 lg:mt-0 w-full lg:w-auto">
-                <button 
+                <button
                   onClick={handleClearData}
                   className="bg-red-500 hover:brightness-125 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center justify-center w-full lg:w-auto gap-2"
                 >
@@ -1239,23 +1238,37 @@ const App: React.FC = () => {
 
   // Special Route strictly for the frameless Mini Player window
   const isMiniPlayer = window.location.hash === '#mini';
-  
+
   if (isMiniPlayer) {
     return (
-      <div className="w-screen h-screen flex flex-col items-center justify-center bg-[var(--panel-bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] overflow-hidden relative border border-[var(--panel-border)] shadow-2xl transition-colors duration-500 rounded-2xl">
-        <button onClick={() => window.api?.closeMiniPlayer()} className="absolute top-2.5 right-3 p-1 opacity-40 hover:opacity-100 [-webkit-app-region:no-drag] cursor-pointer transition-opacity">
-          <X className="w-4 h-4" />
-        </button>
-        <div className="flex items-center gap-2 mb-2">
-          <Flame className={`w-5 h-5 ${focusSessionActive ? 'text-[rgb(var(--a1))]' : 'opacity-40'}`} />
-          <span className="font-bold text-[10px] tracking-[0.2em] uppercase opacity-60">Focus Timer</span>
+      // Outer container: Fully transparent with padding (p-3) so shadows don't hit the window edges
+      <div
+        className="w-screen h-screen bg-transparent p-3 flex items-center justify-center font-sans"
+      >
+        {/* Inner container: The actual glass card */}
+        <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] relative border border-[rgba(var(--a1),0.3)] shadow-[0_15px_40px_rgba(0,0,0,0.8)] transition-colors duration-500 rounded-3xl overflow-hidden">
+
+          <button onClick={() => window.api?.closeMiniPlayer()} className="absolute top-3 right-3 p-1.5 opacity-40 hover:opacity-100 hover:bg-white/10 rounded-lg [-webkit-app-region:no-drag] cursor-pointer transition-all">
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-2 mb-3">
+            <Flame className={`w-5 h-5 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.8)]' : 'opacity-40'}`} />
+            <span className="font-bold text-[10px] tracking-[0.2em] uppercase opacity-60">Focus Timer</span>
+          </div>
+
+          <span className="text-5xl font-black tabular-nums tracking-tight mb-5 text-[var(--text)] drop-shadow-md">
+            {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
+          </span>
+
+          <button
+            onClick={toggleFocusSession}
+            className={`[-webkit-app-region:no-drag] px-8 py-2.5 rounded-full text-[11px] font-black tracking-[0.15em] transition-all cursor-pointer shadow-lg border ${focusSessionActive ? 'bg-black/40 border-[rgba(var(--a2),0.5)] text-[rgb(var(--a2))] hover:bg-[rgba(var(--a2),0.1)]' : 'bg-[rgb(var(--a1))] border-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
+          >
+            {focusSessionActive ? 'STOP' : 'START'}
+          </button>
+
         </div>
-        <span className="text-4xl font-black tabular-nums tracking-tight mb-4 drop-shadow-md text-[var(--text)]">
-          {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
-        </span>
-        <button onClick={toggleFocusSession} className={`[-webkit-app-region:no-drag] px-6 py-2 rounded-full text-[11px] font-black tracking-[0.15em] transition-all cursor-pointer shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.4)] hover:brightness-125'}`}>
-          {focusSessionActive ? 'STOP' : 'START'}
-        </button>
       </div>
     );
   }
@@ -1267,7 +1280,7 @@ const App: React.FC = () => {
       >
         <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
-        
+
         {/* Sidebar Skeleton */}
         <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-2xl print:hidden animate-pulse transition-all duration-300">
           <div className="flex flex-col gap-8 md:gap-10">
