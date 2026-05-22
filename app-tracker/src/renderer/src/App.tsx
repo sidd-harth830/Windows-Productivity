@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw, Maximize2, Clock } from './components/Icons'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw, Maximize2, Clock, Pin, PinOff } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { Switch } from './switch'
@@ -22,6 +22,7 @@ const MinusIcon = ({ className }: { className?: string }) => <svg xmlns="http://
 
 const App: React.FC = () => {
   // 1. All hooks declared cleanly at the top!
+  const isMiniPlayer = window.location.hash === '#mini';
   const [activeTab, setActiveTab] = useState<'dashboard' | 'controls' | 'settings' | 'analytics'>('dashboard');
   const [activeApp, setActiveApp] = useState<WindowData | null>(null);
   const [lastActiveValidApp, setLastActiveValidApp] = useState<string | null>(null);
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   const [focusSessionActive, setFocusSessionActive] = useState<boolean>(false);
   const [focusSessionMinutes, setFocusSessionMinutes] = useState<number>(25);
   const [focusSessionTimeLeft, setFocusSessionTimeLeft] = useState<number>(25 * 60);
+  const [isMiniPlayerAlwaysOnTop, setIsMiniPlayerAlwaysOnTop] = useState<boolean>(true);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
   const analyticsRef = useRef<HTMLDivElement>(null);
@@ -51,6 +53,7 @@ const App: React.FC = () => {
   const [trackSelf, setTrackSelf] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSelf') || 'false'));
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
   const [themePref, setThemePref] = useState<'system' | 'light' | 'dark'>(() => (localStorage.getItem('themePref') as 'system' | 'light' | 'dark') || 'system');
+  const [miniPlayerThemePref, setMiniPlayerThemePref] = useState<'sync' | 'light' | 'dark'>(() => (localStorage.getItem('miniPlayerThemePref') as 'sync' | 'light' | 'dark') || 'sync');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('dark');
   const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(() => parseInt(localStorage.getItem('dailyFocusGoal') || '4', 10));
   const [hiddenApps, setHiddenApps] = useState<string[]>(() => JSON.parse(localStorage.getItem('hiddenApps') || '[]'));
@@ -63,6 +66,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('trackSelf', JSON.stringify(trackSelf)); }, [trackSelf]);
   useEffect(() => { localStorage.setItem('trackSystemApps', JSON.stringify(trackSystemApps)); }, [trackSystemApps]);
   useEffect(() => { localStorage.setItem('themePref', themePref); }, [themePref]);
+  useEffect(() => { localStorage.setItem('miniPlayerThemePref', miniPlayerThemePref); }, [miniPlayerThemePref]);
   useEffect(() => { localStorage.setItem('dailyFocusGoal', dailyFocusGoal.toString()); }, [dailyFocusGoal]);
   useEffect(() => { localStorage.setItem('hiddenApps', JSON.stringify(hiddenApps)); }, [hiddenApps]);
   useEffect(() => { localStorage.setItem('showIgnoredApps', JSON.stringify(showIgnoredApps)); }, [showIgnoredApps]);
@@ -72,8 +76,12 @@ const App: React.FC = () => {
     const root = window.document.documentElement;
 
     root.classList.remove('light', 'dark');
-    root.classList.add(effectiveTheme);
-  }, [themePref, systemTheme]);
+    if (isMiniPlayer) {
+      root.classList.add(miniPlayerThemePref === 'sync' ? effectiveTheme : miniPlayerThemePref);
+    } else {
+      root.classList.add(effectiveTheme);
+    }
+  }, [themePref, systemTheme, miniPlayerThemePref, isMiniPlayer]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -215,12 +223,36 @@ const App: React.FC = () => {
     }
   }, [activeApp?.name, trackSelf, trackSystemApps, hiddenApps]);
 
+  const playChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+      oscillator.frequency.exponentialRampToValueAtTime(1046.50, audioCtx.currentTime + 0.1); // C6
+      
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.8);
+    } catch (e) {
+      console.error("Audio playback failed", e);
+    }
+  };
+
   useEffect(() => {
     if (window.api && window.api.onFocusTimerTick) {
       window.api.onFocusTimerTick((data: { active: boolean, timeLeft: number, total: number }) => {
-        // Show a toast only if we transition from active to inactive and time is up
         if (focusSessionActive && !data.active && data.timeLeft === 0) {
           showToast('Session Complete', 'Great job! Take a short break to recharge.');
+          playChime();
         }
         setFocusSessionActive(data.active);
         setFocusSessionTimeLeft(data.timeLeft);
@@ -296,6 +328,16 @@ const App: React.FC = () => {
       const success = await (window.api as any).saveCsv(csvContent);
       if (success) {
         showToast('CSV Exported', 'Your complete history was successfully saved.');
+      }
+    }
+  };
+
+  const handleCheckForUpdates = async () => {
+    if (window.api && (window.api as any).checkForUpdates) {
+      showToast('Checking for Updates', 'Contacting the server to find new versions...');
+      const result = await (window.api as any).checkForUpdates();
+      if (!result) {
+        setTimeout(() => toast.info('Up to Date', { description: 'You are currently running the latest version.' }), 1500);
       }
     }
   };
@@ -536,6 +578,59 @@ const App: React.FC = () => {
     return streak;
   }, [historyData, activeApp, dailyFocusGoal]);
 
+  const getStreakRank = (streak: number) => {
+    if (streak >= 30) return { title: 'Legend', color: 'text-purple-400 drop-shadow-[0_0_5px_rgba(192,132,252,0.5)]' };
+    if (streak >= 7) return { title: 'Master', color: 'text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]' };
+    if (streak >= 3) return { title: 'Pro', color: 'text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]' };
+    return { title: 'Novice', color: 'text-[var(--text)] opacity-60' };
+  };
+  const currentRank = getStreakRank(currentStreak);
+
+  // Weekly Productivity Summary
+  useEffect(() => {
+    if (Object.keys(historyData).length === 0) return;
+
+    const lastSummary = localStorage.getItem('lastWeeklySummaryDate');
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const lastSummaryDate = lastSummary ? new Date(lastSummary) : null;
+    const daysSinceLast = lastSummaryDate ? (today.getTime() - lastSummaryDate.getTime()) / (1000 * 3600 * 24) : 7;
+
+    if (daysSinceLast >= 7) {
+      let totalTime = 0;
+      let prodTime = 0;
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dStr = d.toISOString().split('T')[0];
+        const dayData = historyData[dStr] || {};
+        
+        Object.entries(dayData).forEach(([app, time]) => {
+          totalTime += time;
+          const cat = categorizeApp(app);
+          if (cat === 'Development' || cat === 'Productivity') prodTime += time;
+          else if (cat === 'Communication') prodTime += (time * 0.5);
+        });
+      }
+
+      if (totalTime > 0) {
+        const score = Math.round((prodTime / totalTime) * 100);
+        const title = "Weekly Productivity Summary 📊";
+        const body = `You achieved a ${score}% productivity score over the last 7 days. ${score >= 60 ? 'Fantastic work!' : 'Let us aim higher next week!'}`;
+        
+        showToast(title, body);
+        if (window.api && (window.api as any).showNotification) {
+          (window.api as any).showNotification(title, body);
+        }
+        
+        localStorage.setItem('lastWeeklySummaryDate', todayStr);
+      } else if (!lastSummary) {
+        localStorage.setItem('lastWeeklySummaryDate', todayStr);
+      }
+    }
+  }, [historyData]);
+
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
@@ -563,10 +658,15 @@ const App: React.FC = () => {
             </h1>
             <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
           </div>
-          <div className="flex items-center gap-2.5 bg-[var(--panel-bg)] border border-[var(--panel-border)] px-4 py-2 rounded-2xl shadow-inner mb-1">
-            <Flame className={`w-5 h-5 ${currentStreak > 0 ? 'text-orange-500 animate-pulse drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]' : 'text-[var(--text)] opacity-40'}`} />
-            <div className="flex flex-col">
-              <span className="text-sm font-black text-[var(--text)] leading-none">{currentStreak} <span className="opacity-50 text-xs font-bold tracking-widest uppercase ml-1">Day Streak</span></span>
+          <div className="flex items-center gap-3 bg-[var(--panel-bg)] border border-[var(--panel-border)] px-4 py-2 rounded-2xl shadow-inner mb-1">
+            <div className="flex items-center gap-2 border-r border-[var(--panel-border)] pr-3">
+              <Flame className={`w-5 h-5 ${currentStreak > 0 ? 'text-orange-500 animate-pulse drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]' : 'text-[var(--text)] opacity-40'}`} />
+              <div className="flex flex-col">
+                <span className="text-sm font-black text-[var(--text)] leading-none">{currentStreak} <span className="opacity-50 text-xs font-bold tracking-widest uppercase ml-1">Day Streak</span></span>
+              </div>
+            </div>
+            <div className={`text-xs font-black uppercase tracking-widest ${currentRank.color}`}>
+              {currentRank.title}
             </div>
           </div>
         </div>
@@ -692,7 +792,10 @@ const App: React.FC = () => {
                 <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] tracking-wide">Deep Focus</h3>
               </div>
               <button
-              onClick={() => { if (window.api && (window.api as any).openMiniPlayer) (window.api as any).openMiniPlayer(); }}
+                onClick={() => {
+                  if ((window as any).electron) (window as any).electron.ipcRenderer.send('open-mini-player');
+                  else if ((window as any).api && (window as any).api.openMiniPlayer) (window as any).api.openMiniPlayer();
+                }}
                 className="p-2 bg-[var(--bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-xl shadow-inner"
                 title="Open Mini Player"
               >
@@ -1090,15 +1193,26 @@ const App: React.FC = () => {
   };
 
   const renderSettings = () => (
-    <div className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
-      <div className="stagger-item shrink-0 mb-2 sm:mb-4" style={{ animationDelay: '0.05s' }}>
+    <div className="relative flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
+      
+      {focusSessionActive && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--bg)]/40 backdrop-blur-md rounded-[2rem] -m-4 p-4">
+          <div className="bg-[var(--panel-bg)] p-8 rounded-3xl border border-[var(--panel-border)] shadow-2xl flex flex-col items-center text-center max-w-md animate-in zoom-in fade-in duration-300">
+            <ShieldAlert className="w-12 h-12 text-[rgb(var(--a1))] mb-4 drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]" />
+            <h2 className="text-2xl font-black text-[var(--text)] mb-2 tracking-tight">Settings Locked</h2>
+            <p className="text-[var(--text)] opacity-70 font-medium text-sm">To prevent bypassing tracking rules, settings are securely locked while your Deep Focus session is active.</p>
+          </div>
+        </div>
+      )}
+
+      <div className={`stagger-item shrink-0 mb-2 sm:mb-4 ${focusSessionActive ? 'blur-sm opacity-30 pointer-events-none' : ''}`} style={{ animationDelay: '0.05s' }}>
         <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
           Application Preferences
         </h1>
         <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Customize your tracking and visual experience.</p>
       </div>
 
-      <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] rounded-2xl lg:rounded-3xl shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex-1 flex flex-col overflow-hidden" style={{ animationDelay: '0.15s' }}>
+      <div className={`stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] rounded-2xl lg:rounded-3xl shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex-1 flex flex-col overflow-hidden ${focusSessionActive ? 'blur-sm opacity-30 pointer-events-none' : ''}`} style={{ animationDelay: '0.15s' }}>
         <div className="p-5 sm:p-6 lg:p-8 pr-2 sm:pr-4 flex flex-col gap-8 sm:gap-10 overflow-y-auto custom-scrollbar h-full">
           <div className="flex flex-col gap-4">
             <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">Tracking Engine</h3>
@@ -1259,19 +1373,60 @@ const App: React.FC = () => {
 
           <div className="flex flex-col gap-4 pb-10">
             <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">Appearance Options</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {(['system', 'light', 'dark'] as const).map((t) => (
+            <div className="flex flex-col gap-6">
+              <div>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide mb-3">Main App Theme</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  {(['system', 'light', 'dark'] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setThemePref(t)}
+                      className={`flex items-center justify-center gap-2 sm:gap-3 p-4 sm:p-5 rounded-xl sm:rounded-2xl border transition-all duration-300 cursor-pointer ${themePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
+                    >
+                      {t === 'system' && <Monitor className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                      {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                      {t === 'dark' && <Moon className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                      <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t} Mode</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide mb-3">Mini Player Theme</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  {(['sync', 'light', 'dark'] as const).map((t) => (
+                    <button
+                      key={`mini-${t}`}
+                      onClick={() => setMiniPlayerThemePref(t)}
+                      className={`flex items-center justify-center gap-2 sm:gap-3 p-4 sm:p-5 rounded-xl sm:rounded-2xl border transition-all duration-300 cursor-pointer ${miniPlayerThemePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
+                    >
+                      {t === 'sync' && <RefreshCw className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                      {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                      {t === 'dark' && <Moon className="w-5 h-5 text-[var(--text)] opacity-80" />}
+                      <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t === 'sync' ? 'Sync with App' : `${t} Mode`}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <h3 className="text-[var(--text)] font-bold text-lg sm:text-xl border-b border-[var(--panel-border)] pb-2 sm:pb-3 tracking-wide">System Updates</h3>
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between bg-[var(--bg)] p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-[var(--panel-border)] shadow-inner gap-4">
+              <div>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide">Check for Updates</h4>
+                <p className="text-xs sm:text-sm text-[var(--text)] opacity-50 mt-0.5 sm:mt-1 max-w-lg font-medium">Verify if a newer version of the application is available for download.</p>
+              </div>
+              <div className="flex gap-3 mt-2 lg:mt-0 w-full lg:w-auto shrink-0">
                 <button
-                  key={t}
-                  onClick={() => setThemePref(t)}
-                  className={`flex items-center justify-center gap-2 sm:gap-3 p-4 sm:p-5 rounded-xl sm:rounded-2xl border transition-all duration-300 cursor-pointer ${themePref === t ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_20px_rgba(var(--a1),0.3)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
+                  onClick={handleCheckForUpdates}
+                  className="bg-[var(--panel-bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] text-[var(--text)] px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black tracking-widest transition-all cursor-pointer shadow-inner flex items-center justify-center gap-2"
                 >
-                  {t === 'system' && <Monitor className="w-5 h-5 text-[var(--text)] opacity-80" />}
-                  {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
-                  {t === 'dark' && <Moon className="w-5 h-5 text-[var(--text)] opacity-80" />}
-                  <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t} Mode</span>
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                  CHECK NOW
                 </button>
-              ))}
+              </div>
             </div>
           </div>
 
@@ -1301,7 +1456,6 @@ const App: React.FC = () => {
   );
 
   // Special Route strictly for the frameless Mini Player window
-  const isMiniPlayer = window.location.hash === '#mini';
 
   // Force the underlying document to be 100% transparent to support perfectly rounded corners
   useEffect(() => {
@@ -1316,30 +1470,79 @@ const App: React.FC = () => {
 
   if (isMiniPlayer) {
     return (
-      <div
-        className="w-screen h-screen bg-transparent p-6 flex items-center justify-center font-sans overflow-hidden"
-      >
-        {/* Inner container: The actual glass card */}
-        <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] relative border-2 border-[rgba(var(--a1),0.4)] shadow-[0_15px_40px_rgba(0,0,0,0.9)] transition-colors duration-500 rounded-[32px] overflow-hidden">
+      <div className="w-screen h-screen bg-transparent p-4 flex items-center justify-center font-sans overflow-hidden [-webkit-app-region:drag]">
+        <div className="w-full h-full flex flex-col justify-between bg-[var(--panel-bg)] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_15px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] rounded-[28px] overflow-hidden p-4 group">
+          
+          {/* Top Bar - Restore Button entirely removed */}
+          <div className="flex items-center justify-between w-full z-50">
+            <button 
+              onClick={() => {
+                const newState = !isMiniPlayerAlwaysOnTop;
+                setIsMiniPlayerAlwaysOnTop(newState);
+                if ((window as any).electron) (window as any).electron.ipcRenderer.send('toggle-always-on-top', newState);
+                else if ((window as any).api && (window as any).api.toggleAlwaysOnTop) (window as any).api.toggleAlwaysOnTop(newState);
+              }} 
+              className={`p-2 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border shadow-sm ${isMiniPlayerAlwaysOnTop ? 'bg-[rgb(var(--a1))] text-[var(--bg)] border-transparent' : 'bg-[var(--bg)] text-[var(--text)] hover:text-[rgb(var(--a1))] border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.2)]'}`}
+              title={isMiniPlayerAlwaysOnTop ? "Always on Top: ON" : "Always on Top: OFF"}
+            >
+              {isMiniPlayerAlwaysOnTop ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
+            </button>
 
-          <button onClick={() => (window.api as any)?.closeMiniPlayer()} className="absolute top-4 right-4 p-2 opacity-50 hover:opacity-100 hover:bg-white/10 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all z-50 pointer-events-auto">
-            <X className="w-4 h-4" />
-          </button>
+            <div className="flex items-center gap-1.5 bg-[var(--bg)] px-3 py-1 rounded-full border border-[var(--panel-border)] shadow-inner">
+              <Flame className={`w-3.5 h-3.5 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]' : 'opacity-40'}`} />
+              <span className="font-bold text-[10px] tracking-widest uppercase opacity-70">Focus</span>
+            </div>
 
-          <div className="flex items-center gap-2 mb-3">
-            <Flame className={`w-5 h-5 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.8)]' : 'opacity-40'}`} />
-            <span className="font-bold text-[10px] tracking-[0.2em] uppercase opacity-60">Focus Timer</span>
+            <button 
+              onClick={() => {
+                if ((window as any).electron) (window as any).electron.ipcRenderer.send('close-mini-player');
+                else if ((window as any).api && (window as any).api.closeMiniPlayer) (window as any).api.closeMiniPlayer();
+              }} 
+              className="p-2 bg-[var(--bg)] hover:bg-red-500/20 text-[var(--text)] hover:text-red-500 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border border-[var(--panel-border)] shadow-sm"
+              title="Close Mini Player"
+            >
+              <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+            </button>
           </div>
 
-          <span className="text-5xl font-black tabular-nums tracking-tight mb-5 text-[var(--text)] drop-shadow-md">
-            {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
-          </span>
+          {/* Timer Display */}
+          <div className="flex flex-col items-center justify-center flex-1 my-3 relative">
+            {focusSessionActive && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <svg className="w-full h-full scale-[1.25] -rotate-90 drop-shadow-[0_0_12px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="44" stroke="var(--panel-border)" strokeWidth="1.5" fill="transparent" />
+                  <circle cx="50" cy="50" r="44" stroke="rgb(var(--a1))" strokeWidth="3.5" fill="transparent" strokeDasharray="276.46" strokeDashoffset={276.46 - (focusSessionTimeLeft / (focusSessionMinutes * 60) * 276.46)} className="transition-all duration-1000 linear" strokeLinecap="round" />
+                </svg>
+              </div>
+            )}
+            <span className="text-[3.25rem] leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10">
+              {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
+            </span>
+            
+            {/* Independent adjustment of time right inside the Mini Player */}
+            {!focusSessionActive && (
+              <div className="flex items-center gap-4 mt-2 [-webkit-app-region:no-drag]">
+                <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="text-[var(--text)] opacity-40 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-colors font-bold text-lg px-2 py-0.5 cursor-pointer">-</button>
+                <span className="text-[var(--text)] opacity-30 text-[9px] font-black tracking-widest uppercase">MIN</span>
+                <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="text-[var(--text)] opacity-40 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-colors font-bold text-lg px-2 py-0.5 cursor-pointer">+</button>
+              </div>
+            )}
+          </div>
 
+          {/* Prominent Start/Stop Session Button */}
           <button
             onClick={toggleFocusSession}
-            className={`[-webkit-app-region:no-drag] px-8 py-2.5 rounded-full text-[11px] font-black tracking-[0.15em] transition-all cursor-pointer shadow-lg border relative z-50 pointer-events-auto ${focusSessionActive ? 'bg-black/40 border-[rgba(var(--a2),0.5)] text-[rgb(var(--a2))] hover:bg-[rgba(var(--a2),0.1)]' : 'bg-[rgb(var(--a1))] border-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
+            className={`[-webkit-app-region:no-drag] w-full py-3 rounded-[14px] text-[11px] font-black tracking-widest transition-all duration-300 cursor-pointer shadow-lg flex items-center justify-center gap-2 z-50 ${
+              focusSessionActive 
+                ? 'bg-[var(--bg)] border border-[var(--panel-border)] text-red-400 hover:bg-red-500/10 hover:border-red-500/30' 
+                : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] border-transparent text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.3)] hover:brightness-110'
+            }`}
           >
-            {focusSessionActive ? 'STOP' : 'START'}
+            {focusSessionActive ? (
+              <><Square className="w-3.5 h-3.5" strokeWidth={3} /> STOP SESSION</>
+            ) : (
+              <><Play className="w-3.5 h-3.5 fill-current" /> START SESSION</>
+            )}
           </button>
 
         </div>
@@ -1359,13 +1562,22 @@ const App: React.FC = () => {
             <span className="text-xs font-black tracking-widest uppercase">Zeitra</span>
           </div>
           <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
-            <button onClick={() => (window.api as any).minimizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+            <button onClick={() => {
+              if ((window as any).electron) (window as any).electron.ipcRenderer.send('minimize-window');
+              else (window as any).api?.minimizeWindow?.();
+            }} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
               <MinusIcon className="w-4 h-4" />
             </button>
-            <button onClick={() => (window.api as any).maximizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+            <button onClick={() => {
+              if ((window as any).electron) (window as any).electron.ipcRenderer.send('maximize-window');
+              else (window as any).api?.maximizeWindow?.();
+            }} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
               <Square className="w-3.5 h-3.5" strokeWidth={3} />
             </button>
-            <button onClick={() => (window.api as any).closeWindow?.()} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+            <button onClick={() => {
+              if ((window as any).electron) (window as any).electron.ipcRenderer.send('close-window');
+              else (window as any).api?.closeWindow?.();
+            }} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1426,13 +1638,22 @@ const App: React.FC = () => {
           <span className="text-xs font-black tracking-widest uppercase">Zeitra</span>
         </div>
         <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
-          <button onClick={() => (window.api as any).minimizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+          <button onClick={() => {
+            if ((window as any).electron) (window as any).electron.ipcRenderer.send('minimize-window');
+            else (window as any).api?.minimizeWindow?.();
+          }} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
             <MinusIcon className="w-4 h-4" />
           </button>
-          <button onClick={() => (window.api as any).maximizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+          <button onClick={() => {
+            if ((window as any).electron) (window as any).electron.ipcRenderer.send('maximize-window');
+            else (window as any).api?.maximizeWindow?.();
+          }} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
             <Square className="w-3.5 h-3.5" strokeWidth={3} />
           </button>
-          <button onClick={() => (window.api as any).closeWindow?.()} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+          <button onClick={() => {
+            if ((window as any).electron) (window as any).electron.ipcRenderer.send('close-window');
+            else (window as any).api?.closeWindow?.();
+          }} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>

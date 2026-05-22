@@ -27,7 +27,11 @@ const api = {
   stopFocusTimer: () => ipcRenderer.send('stop-focus-timer'),
   openMiniPlayer: () => ipcRenderer.send('open-mini-player'),
   closeMiniPlayer: () => ipcRenderer.send('close-mini-player'),
+  toggleAlwaysOnTop: (isAlwaysOnTop: boolean) => ipcRenderer.send('toggle-always-on-top', isAlwaysOnTop),
   onFocusTimerTick: (callback: (data: any) => void) => ipcRenderer.on('focus-timer-tick', (_event, data) => callback(data)),
+
+  // NEW: System Notification
+  showNotification: (title: string, body: string) => ipcRenderer.send('show-notification', title, body),
 
   // NEW: Save CSV
   saveCsv: (content: string) => ipcRenderer.invoke('save-csv', content),
@@ -51,7 +55,10 @@ const api = {
   browseForExe: () => ipcRenderer.invoke('browse-for-exe'),
 
   // NEW: Get History
-  getHistory: () => ipcRenderer.invoke('get-history')
+  getHistory: () => ipcRenderer.invoke('get-history'),
+
+  // NEW: Check for Updates
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates')
 }
 
 if (process.contextIsolated) {

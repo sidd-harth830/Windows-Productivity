@@ -9,7 +9,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         // This explicitly tells Vite to leave active-win alone!
-        external: ['active-win'] 
+        external: ['active-win', 'electron-updater'] 
       }
     }
   },

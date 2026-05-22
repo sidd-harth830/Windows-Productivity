@@ -4,7 +4,6 @@ import { exec } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as db from './database' // Fully integrated SQLite database!
-import { autoUpdater } from 'electron-updater'
 
 let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
@@ -134,12 +133,12 @@ ipcMain.on('stop-focus-timer', () => {
 
 // Window Controls
 ipcMain.on('minimize-window', (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
+  const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
   if (win) win.minimize();
 });
 
 ipcMain.on('maximize-window', (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
+  const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
   if (win) {
     if (win.isMaximized()) win.restore();
     else win.maximize();
@@ -151,14 +150,32 @@ ipcMain.on('close-window', (event) => {
   if (win) win.close(); // Triggers the 'close' event which hides it cleanly
 });
 
+ipcMain.on('toggle-always-on-top', (_event, isAlwaysOnTop: boolean) => {
+  if (miniPlayerWin) miniPlayerWin.setAlwaysOnTop(isAlwaysOnTop);
+});
+
 // Mini Player Window
 ipcMain.on('open-mini-player', () => {
   if (miniPlayerWin) { miniPlayerWin.focus(); return; }
   miniPlayerWin = createMiniPlayerWindow();
+
+  // Hide main window when opening mini player
+  const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
+  if (wins.length > 0) wins[0].hide();
 });
 
 ipcMain.on('close-mini-player', () => {
   if (miniPlayerWin) miniPlayerWin.close();
+});
+
+ipcMain.on('restore-main-window', () => {
+  const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
+  if (wins.length > 0) wins[0].show();
+  if (miniPlayerWin) miniPlayerWin.close();
+});
+
+ipcMain.on('show-notification', (_event, title: string, body: string) => {
+  new Notification({ title, body }).show();
 });
 
 ipcMain.handle('save-csv', async (_event, csvContent: string) => {
@@ -266,6 +283,18 @@ ipcMain.handle('browse-for-exe', async () => {
 });
 
 ipcMain.handle('get-history', () => db.getAllUsage());
+
+ipcMain.handle('check-for-updates', async () => {
+  if (app.isPackaged) {
+    try {
+      const { autoUpdater } = require('electron-updater');
+      // checkForUpdatesAndNotify() automatically downloads if available and triggers OS notifications
+      const result = await autoUpdater.checkForUpdatesAndNotify();
+      return !!result;
+    } catch (e) { return false; }
+  }
+  return false; // Updates don't run in development mode
+});
 
 // --- 3. Utilities ---
 function cleanAppName(rawName: string): string {
@@ -438,10 +467,17 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');
   
   // --- Auto Updater Setup ---
-  autoUpdater.checkForUpdatesAndNotify();
-  autoUpdater.on('update-downloaded', () => {
-    new Notification({ title: 'ForgePulse Update Ready', body: 'A new version has been downloaded and will install on restart.' }).show();
-  });
+  if (app.isPackaged) {
+    try {
+      const { autoUpdater } = require('electron-updater');
+      autoUpdater.checkForUpdatesAndNotify();
+      autoUpdater.on('update-downloaded', () => {
+        new Notification({ title: 'ForgePulse Update Ready', body: 'A new version has been downloaded and will install on restart.' }).show();
+      });
+    } catch (e) {
+      console.error('Auto-updater module not found:', e);
+    }
+  }
 
   // --- Global Keyboard Shortcuts ---
   // Toggle Focus Mode instantly from anywhere in Windows via Ctrl+Shift+F (or Cmd+Shift+F on Mac)
