@@ -48,6 +48,31 @@ function checkDateRoll() {
   }
 }
 
+// --- 1.5 System Tray Dynamic Menu ---
+function updateTrayMenu() {
+  if (!tray) return;
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Zeitra Engine Live', enabled: false },
+    { type: 'separator' },
+    { 
+      label: 'Focus Mode', 
+      type: 'checkbox', 
+      checked: isFocusModeEnabled, 
+      click: (menuItem) => { 
+        isFocusModeEnabled = menuItem.checked; 
+        BrowserWindow.getAllWindows().forEach(w => w.webContents.send('sync-focus-mode', isFocusModeEnabled));
+      } 
+    },
+    { type: 'separator' },
+    { label: 'Show Dashboard', click: () => {
+        const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
+        if (wins.length > 0) wins[0].show();
+    } },
+    { label: 'Quit Zeitra', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  tray.setContextMenu(contextMenu);
+}
+
 // --- 2. IPC Channels ---
 ipcMain.handle('get-initial-data', () => {
   return {
@@ -58,7 +83,10 @@ ipcMain.handle('get-initial-data', () => {
   };
 });
 
-ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => isFocusModeEnabled = enabled);
+ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => {
+  isFocusModeEnabled = enabled;
+  updateTrayMenu();
+});
 ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' | number>) => currentBlockList = rules);
 
 ipcMain.on('update-preferences', (_event, prefs) => {
@@ -80,6 +108,7 @@ ipcMain.on('start-focus-timer', (_event, minutes: number) => {
   focusTotalDuration = minutes * 60;
   focusTimeLeft = minutes * 60;
   isFocusModeEnabled = true; // Auto-engage global blocking
+  updateTrayMenu();
   
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: focusActive, timeLeft: focusTimeLeft, total: focusTotalDuration }));
 
@@ -100,6 +129,17 @@ ipcMain.on('start-focus-timer', (_event, minutes: number) => {
 ipcMain.on('stop-focus-timer', () => {
   focusActive = false;
   BrowserWindow.getAllWindows().forEach(w => w.webContents.send('focus-timer-tick', { active: false, timeLeft: focusTimeLeft, total: focusTotalDuration }));
+});
+
+// Window Controls
+ipcMain.on('minimize-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+});
+
+ipcMain.on('close-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close(); // Triggers the 'close' event which hides it cleanly
 });
 
 // Mini Player Window
@@ -343,7 +383,7 @@ async function startTracking(mainWindow: BrowserWindow) {
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1280, height: 850, minWidth: 1000, minHeight: 700,
-    show: false, autoHideMenuBar: true,
+    show: false, autoHideMenuBar: true, frame: false, transparent: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   });
@@ -397,16 +437,12 @@ app.whenReady().then(() => {
   const mainWindow = createWindow();
 
   tray = new Tray(icon);
-  const contextMenu = Menu.buildFromTemplate([
-    { label: 'Zeitra Engine Live', enabled: false },
-    { type: 'separator' },
-    { label: 'Show Dashboard', click: () => mainWindow.show() },
-    { label: 'Quit Zeitra', click: () => { isQuitting = true; app.quit(); } }
-  ]);
-  
+  updateTrayMenu();
   tray.setToolTip('Zeitra - Tracking Active');
-  tray.setContextMenu(contextMenu);
-  tray.on('double-click', () => mainWindow.show());
+  tray.on('double-click', () => {
+    const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
+    if (wins.length > 0) wins[0].show();
+  });
 
   startTracking(mainWindow);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

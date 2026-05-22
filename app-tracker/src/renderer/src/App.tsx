@@ -18,6 +18,8 @@ interface WindowData {
   allUsage: Record<string, number>; appIcons: Record<string, string>;
 }
 
+const MinusIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+
 const App: React.FC = () => {
   // 1. All hooks declared cleanly at the top!
   const [activeTab, setActiveTab] = useState<'dashboard' | 'controls' | 'settings' | 'analytics'>('dashboard');
@@ -100,6 +102,19 @@ const App: React.FC = () => {
   useEffect(() => {
     if (window.api && (window.api as any).getAutoStartStatus) {
       (window.api as any).getAutoStartStatus().then(setAutoStart);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (window.api && (window.api as any).onSyncFocusMode) {
+      (window.api as any).onSyncFocusMode((enabled: boolean) => {
+        setIsFocusMode(enabled);
+        if (enabled) {
+          toast.success('Focus Mode Enabled', { description: 'Toggled via System Tray.' });
+        } else {
+          toast.info('Focus Mode Disabled', { description: 'Toggled via System Tray.' });
+        }
+      });
     }
   }, []);
 
@@ -219,16 +234,16 @@ const App: React.FC = () => {
 
   const toggleFocusSession = () => {
     if (!focusSessionActive) {
-      if (window.api && window.api.startFocusTimer) window.api.startFocusTimer(focusSessionMinutes);
+      if (window.api && (window.api as any).startFocusTimer) (window.api as any).startFocusTimer(focusSessionMinutes);
       if (!isFocusMode) {
         setIsFocusMode(true);
-        if (window.api && window.api.toggleFocusMode) window.api.toggleFocusMode(true);
+        if (window.api && (window.api as any).toggleFocusMode) (window.api as any).toggleFocusMode(true);
         showToast('Deep Focus Engaged', 'Focus Mode auto-enabled to protect your session.');
       } else {
         showToast('Deep Focus Started', 'Stay on task. You got this!');
       }
     } else {
-      if (window.api && window.api.stopFocusTimer) window.api.stopFocusTimer();
+      if (window.api && (window.api as any).stopFocusTimer) (window.api as any).stopFocusTimer();
     }
   };
 
@@ -628,7 +643,7 @@ const App: React.FC = () => {
                 <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] tracking-wide">Deep Focus</h3>
               </div>
               <button
-                onClick={() => { if (window.api && window.api.openMiniPlayer) window.api.openMiniPlayer(); }}
+              onClick={() => { if (window.api && (window.api as any).openMiniPlayer) (window.api as any).openMiniPlayer(); }}
                 className="p-2 bg-[var(--bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-xl shadow-inner"
                 title="Open Mini Player"
               >
@@ -1243,12 +1258,12 @@ const App: React.FC = () => {
     return (
       // Outer container: Fully transparent with padding (p-3) so shadows don't hit the window edges
       <div
-        className="w-screen h-screen bg-transparent p-3 flex items-center justify-center font-sans"
+        className="w-screen h-screen bg-transparent p-4 flex items-center justify-center font-sans"
       >
         {/* Inner container: The actual glass card */}
-        <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] relative border border-[rgba(var(--a1),0.3)] shadow-[0_15px_40px_rgba(0,0,0,0.8)] transition-colors duration-500 rounded-3xl overflow-hidden">
+        <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] relative border border-[rgba(var(--a1),0.3)] shadow-[0_15px_40px_rgba(0,0,0,0.8)] transition-colors duration-500 rounded-[28px] overflow-hidden">
 
-          <button onClick={() => window.api?.closeMiniPlayer()} className="absolute top-3 right-3 p-1.5 opacity-40 hover:opacity-100 hover:bg-white/10 rounded-lg [-webkit-app-region:no-drag] cursor-pointer transition-all">
+          <button onClick={() => (window.api as any)?.closeMiniPlayer()} className="absolute top-4 right-4 p-2 opacity-50 hover:opacity-100 hover:bg-white/10 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all z-50 pointer-events-auto">
             <X className="w-4 h-4" />
           </button>
 
@@ -1263,7 +1278,7 @@ const App: React.FC = () => {
 
           <button
             onClick={toggleFocusSession}
-            className={`[-webkit-app-region:no-drag] px-8 py-2.5 rounded-full text-[11px] font-black tracking-[0.15em] transition-all cursor-pointer shadow-lg border ${focusSessionActive ? 'bg-black/40 border-[rgba(var(--a2),0.5)] text-[rgb(var(--a2))] hover:bg-[rgba(var(--a2),0.1)]' : 'bg-[rgb(var(--a1))] border-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
+            className={`[-webkit-app-region:no-drag] px-8 py-2.5 rounded-full text-[11px] font-black tracking-[0.15em] transition-all cursor-pointer shadow-lg border relative z-50 pointer-events-auto ${focusSessionActive ? 'bg-black/40 border-[rgba(var(--a2),0.5)] text-[rgb(var(--a2))] hover:bg-[rgba(var(--a2),0.1)]' : 'bg-[rgb(var(--a1))] border-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_15px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
           >
             {focusSessionActive ? 'STOP' : 'START'}
           </button>
@@ -1275,18 +1290,32 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div
-        className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500 bg-background text-foreground"
-      >
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
+      <div className="h-screen flex flex-col overflow-hidden relative font-sans transition-colors duration-500 bg-[var(--bg)] text-[var(--text)] rounded-xl border border-[var(--panel-border)] shadow-2xl">
+        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500 z-0"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500 z-0"></div>
 
-        {/* Sidebar Skeleton */}
-        <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-2xl print:hidden animate-pulse transition-all duration-300">
-          <div className="flex flex-col gap-8 md:gap-10">
-            <div className="flex justify-center md:justify-start px-0 md:px-2">
-              <div className="h-10 md:h-12 w-10 md:w-28 bg-[var(--panel-border)] opacity-50 rounded-lg"></div>
-            </div>
+        <div className="h-10 w-full flex items-center justify-between px-4 shrink-0 bg-[var(--bg)]/50 backdrop-blur-md border-b border-[var(--panel-border)] [-webkit-app-region:drag] z-50">
+          <div className="flex items-center gap-2 text-[var(--text)] opacity-60">
+            <ZeitraLogo className="w-4 h-4 drop-shadow-[0_0_5px_rgba(var(--a1),0.4)]" />
+            <span className="text-xs font-black tracking-widest uppercase">Zeitra</span>
+          </div>
+          <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
+            <button onClick={() => (window.api as any).minimizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+              <MinusIcon className="w-4 h-4" />
+            </button>
+            <button onClick={() => (window.api as any).closeWindow?.()} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex overflow-hidden relative z-10 w-full bg-transparent">
+          {/* Sidebar Skeleton */}
+          <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-2xl print:hidden animate-pulse transition-all duration-300">
+            <div className="flex flex-col gap-8 md:gap-10">
+              <div className="flex justify-center md:justify-start px-0 md:px-2">
+                <div className="h-10 md:h-12 w-10 md:w-28 bg-[var(--panel-border)] opacity-50 rounded-lg"></div>
+              </div>
             <nav className="flex flex-col gap-2 md:gap-3">
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-12 md:h-14 w-full bg-[var(--panel-border)] opacity-30 rounded-xl"></div>
@@ -1318,23 +1347,38 @@ const App: React.FC = () => {
               <div className="flex-1 w-full bg-[var(--panel-border)] rounded-2xl animate-pulse opacity-20"></div>
             </div>
           </div>
-        </main>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="h-screen flex overflow-hidden relative font-sans transition-colors duration-500 bg-background text-foreground"
-    >
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500"></div>
+    <div className="h-screen flex flex-col overflow-hidden relative font-sans transition-colors duration-500 bg-[var(--bg)] text-[var(--text)] rounded-xl border border-[var(--panel-border)] shadow-2xl">
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500 z-0"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500 z-0"></div>
 
-      <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-[20px_0_40px_rgba(0,0,0,0.1)] print:hidden transition-all duration-300">
-        <div className="flex flex-col gap-8 md:gap-10">
-          <div className="px-0 md:px-2 flex justify-center md:justify-start stagger-item" style={{ animationDelay: '0.0s' }}>
-            <ZeitraLogo className="w-10 md:w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)] transition-all duration-300" />
-          </div>
+      <div className="h-10 w-full flex items-center justify-between px-4 shrink-0 bg-[var(--bg)]/50 backdrop-blur-md border-b border-[var(--panel-border)] [-webkit-app-region:drag] z-50">
+        <div className="flex items-center gap-2 text-[var(--text)] opacity-60">
+          <ZeitraLogo className="w-4 h-4 drop-shadow-[0_0_5px_rgba(var(--a1),0.4)]" />
+          <span className="text-xs font-black tracking-widest uppercase">Zeitra</span>
+        </div>
+        <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
+          <button onClick={() => (window.api as any).minimizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+            <MinusIcon className="w-4 h-4" />
+          </button>
+          <button onClick={() => (window.api as any).closeWindow?.()} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden relative z-10 w-full bg-transparent">
+        <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-[20px_0_40px_rgba(0,0,0,0.1)] print:hidden transition-all duration-300">
+          <div className="flex flex-col gap-8 md:gap-10">
+            <div className="px-0 md:px-2 flex justify-center md:justify-start stagger-item" style={{ animationDelay: '0.0s' }}>
+              <ZeitraLogo className="w-10 md:w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)] transition-all duration-300" />
+            </div>
 
           <nav className="flex flex-col gap-2 md:gap-3">
             <button
@@ -1404,7 +1448,8 @@ const App: React.FC = () => {
             showToast={showToast}
           />
         )}
-      </main>
+        </main>
+      </div>
 
       {/* Shadcn Sonner Toaster */}
       <Toaster theme={effectiveTheme as any} toastOptions={{ style: { background: 'var(--panel-bg)', color: 'var(--text)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }, className: 'font-sans font-medium' }} />

@@ -12,6 +12,11 @@ const api = {
   // NEW: Emit preferences to the backend
   updatePreferences: (prefs: any) => ipcRenderer.send('update-preferences', prefs),
 
+  // NEW: Custom Window Controls & Focus Sync
+  minimizeWindow: () => ipcRenderer.send('minimize-window'),
+  closeWindow: () => ipcRenderer.send('close-window'),
+  onSyncFocusMode: (callback: (enabled: boolean) => void) => ipcRenderer.on('sync-focus-mode', (_event, enabled) => callback(enabled)),
+
   // NEW: Auto-Start Setup
   getAutoStartStatus: () => ipcRenderer.invoke('get-auto-start'),
   toggleAutoStart: (enabled: boolean) => ipcRenderer.send('toggle-auto-start', enabled),
