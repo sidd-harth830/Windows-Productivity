@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaCh
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
-import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw, Maximize2 } from './components/Icons'
+import { GenericAppIcon, ZeitraLogo, LayoutDashboard, LineChart, ShieldAlert, Settings, Download, Monitor, Sun, Moon, HardDrive, Eye, X, Flame, Play, Square, RefreshCw, Maximize2, Clock } from './components/Icons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { Switch } from './switch'
@@ -479,11 +479,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="stagger-item grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.15s' }}>
-          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex items-center gap-3 sm:gap-4 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, displayAppName)}>
-            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-2">
+        <div className="stagger-item grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.15s' }}>
+          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] cursor-context-menu" onContextMenu={(e) => handleContextMenu(e, displayAppName)}>
+            <div className="relative w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-2.5">
               {activeApp?.appIcons?.[displayAppName] ? (
-                <img src={activeApp.appIcons[displayAppName]} alt="Most Used App" className="max-w-[44px] max-h-[44px] object-contain drop-shadow-md" />
+                <img src={activeApp.appIcons[displayAppName]} alt="Most Used App" className="max-w-full max-h-full object-contain drop-shadow-md" />
               ) : (
                 <div className="w-8 h-8"><GenericAppIcon /></div>
               )}
@@ -495,16 +495,36 @@ const App: React.FC = () => {
               )}
             </div>
             <div className="flex flex-col justify-center overflow-hidden">
-              <span className="text-[var(--text)] opacity-50 text-[10px] sm:text-xs mb-0.5 sm:mb-1 uppercase tracking-widest font-black">Most Used App</span>
-              <span className="text-xl sm:text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate">{displayAppName}</span>
+              <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Most Used App</span>
+              <span className="text-2xl font-bold text-[rgb(var(--a1))] drop-shadow-[0_0_10px_rgba(var(--a1),0.3)] truncate">{displayAppName}</span>
             </div>
           </div>
 
-          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col justify-center hover:border-[rgba(var(--a2),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
-            <span className="text-[var(--text)] opacity-50 text-[10px] sm:text-xs mb-1 sm:mb-2 uppercase tracking-widest font-black">Total Today Uptime</span>
-            <span className="text-3xl sm:text-4xl font-black text-[var(--text)] tracking-wider">
-            {displayTotalTime}
-            </span>
+          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 hover:border-[rgba(var(--a2),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+            <div className="relative w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a2),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a2),0.2)] p-3">
+               <svg className="w-full h-full text-[rgb(var(--a2))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div className="flex flex-col justify-center">
+              <span className="text-[var(--text)] opacity-50 text-xs mb-1 uppercase tracking-widest font-black">Today's Uptime</span>
+              <span className="text-2xl font-black text-[var(--text)] tracking-wider">
+                {displayTotalTime}
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+            <div className="relative w-14 h-14 rounded-2xl bg-[var(--bg)] border border-[rgba(var(--a1),0.3)] flex items-center justify-center flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_20px_rgba(var(--a1),0.2)] p-3">
+               <svg className="w-full h-full text-[rgb(var(--a1))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            </div>
+            <div className="flex flex-col justify-center w-full">
+              <div className="flex justify-between items-end mb-1.5">
+                <span className="text-[var(--text)] opacity-50 text-xs uppercase tracking-widest font-black">Prod. Score</span>
+                <span className={`text-sm font-black ${scoreColor}`}>{prodScore}%</span>
+              </div>
+              <div className="w-full bg-[var(--panel-border)] rounded-full h-2.5 overflow-hidden shadow-inner">
+                <div className={`h-full rounded-full transition-all duration-1000 ease-out ${prodScore >= 75 ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : prodScore >= 40 ? 'bg-[rgb(var(--a1))] shadow-[0_0_10px_rgba(var(--a1),0.5)]' : 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'}`} style={{ width: `${prodScore}%` }}></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -572,14 +592,23 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col items-center justify-center relative overflow-hidden hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
+          <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col items-center relative overflow-hidden hover:border-[rgba(var(--a1),0.4)] transition-all duration-300 shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
             
-            <div className="flex items-center gap-2 mb-6 z-10">
-              <Flame className={`w-6 h-6 sm:w-7 sm:h-7 ${focusSessionActive ? 'text-[rgb(var(--a1))]' : 'text-[var(--text)] opacity-50'}`} />
-              <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] tracking-wide">Deep Focus</h3>
+            <div className="flex w-full items-center justify-between mb-8 z-10">
+              <div className="flex items-center gap-2">
+                <Flame className={`w-5 h-5 sm:w-6 sm:h-6 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse' : 'text-[var(--text)] opacity-50'}`} />
+                <h3 className="font-bold text-lg sm:text-xl text-[var(--text)] tracking-wide">Deep Focus</h3>
+              </div>
+              <button 
+                onClick={() => { if (window.api && window.api.openMiniPlayer) window.api.openMiniPlayer(); }}
+                className="p-2 bg-[var(--bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-xl shadow-inner"
+                title="Open Mini Player"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
             </div>
             
-            <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center shrink-0 mb-6 z-10">
+            <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center shrink-0 mb-8 z-10 flex-1">
               <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_12px_rgba(var(--a1),0.3)]">
                 <circle cx="50" cy="50" r="45" stroke="var(--panel-border)" strokeWidth="4" fill="transparent" />
                 <circle cx="50" cy="50" r="45" stroke="rgb(var(--a1))" strokeWidth="6" fill="transparent" strokeDasharray="282.7" strokeDashoffset={282.7 - ((focusSessionActive ? focusSessionTimeLeft / (focusSessionMinutes * 60) : 1) * 282.7)} className="transition-all duration-1000 linear" strokeLinecap="round" />
@@ -598,19 +627,12 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-3 z-10">
+            <div className="flex w-full items-center gap-3 z-10">
               <button 
                 onClick={toggleFocusSession} 
-                className={`flex items-center justify-center gap-2 px-6 sm:px-8 py-3 rounded-full font-bold text-xs sm:text-sm tracking-widest transition-all shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] hover:bg-[rgba(var(--a2),0.1)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-[rgb(var(--a1))] text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 sm:px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm tracking-widest transition-all shadow-lg ${focusSessionActive ? 'bg-[var(--panel-bg)] border border-[var(--panel-border)] text-[var(--text)] hover:bg-[rgba(var(--a2),0.1)] hover:border-[rgb(var(--a2))] hover:text-[rgb(var(--a2))]' : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-125'}`}
               >
                 {focusSessionActive ? ( <><Square className="w-4 h-4" /> END SESSION</> ) : ( <><Play className="w-4 h-4 fill-current" /> START FOCUS</> )}
-              </button>
-              <button 
-                onClick={() => { if (window.api && window.api.openMiniPlayer) window.api.openMiniPlayer(); }}
-                className="p-3 bg-[var(--panel-bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-full shadow-lg"
-                title="Open Mini Player"
-              >
-                <Maximize2 className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -881,33 +903,28 @@ const App: React.FC = () => {
                 />
               </div>
             </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 max-h-[400px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 overflow-y-auto overflow-x-hidden custom-scrollbar pr-2 max-h-[400px]">
               {filteredAnalyticsApps.map((app) => {
                 const isActive = lastActiveValidApp === app.name;
                 const isIgnored = hiddenApps.includes(app.name);
                 return (
-                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--panel-bg)] backdrop-blur-3xl border p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 sm:gap-5 shadow-lg shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)]'} ${isIgnored ? 'opacity-60 grayscale' : ''}`}>
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[var(--bg)] border flex items-center justify-center p-2.5 shadow-inner shrink-0 relative ${isActive && !isIgnored ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
+                <div key={app.name} onContextMenu={(e) => handleContextMenu(e, app.name)} className={`bg-[var(--bg)] border p-4 sm:p-5 rounded-2xl flex items-center gap-4 shadow-inner transition-all cursor-context-menu ${isActive ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'border-[var(--panel-border)] hover:border-[rgba(var(--a1),0.3)] hover:shadow-lg'} ${isIgnored ? 'opacity-60 grayscale' : ''}`}>
+                  <div className={`w-12 h-12 rounded-xl bg-[var(--panel-bg)] border flex items-center justify-center p-2 shadow-sm shrink-0 relative ${isActive && !isIgnored ? 'border-emerald-500/50' : 'border-[var(--panel-border)]'}`}>
                     {activeApp?.appIcons?.[app.name] ? <img src={activeApp.appIcons[app.name]} className="object-contain max-w-full max-h-full drop-shadow-md" alt="" /> : <GenericAppIcon />}
                     {isActive && !isIgnored && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 shrink-0" title="Currently Active">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3 shrink-0" title="Currently Active">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] border border-[var(--panel-bg)]"></span>
                       </span>
-                    )}
-                    {isIgnored && (
-                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[var(--panel-bg)] rounded-full border border-red-500 flex items-center justify-center">
-                        <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
-                      </div>
                     )}
                   </div>
                   <div className="overflow-hidden">
-                    <p className={`text-xs text-[var(--text)] opacity-50 font-black uppercase tracking-widest truncate flex items-center gap-2 ${isIgnored ? 'line-through' : ''}`}>
-                      {app.name}
+                    <p className={`text-sm font-bold text-[var(--text)] truncate flex items-center gap-2 ${isIgnored ? 'line-through opacity-50' : 'opacity-90'}`}>
+                      {app.name.length > 20 ? app.name.substring(0, 17) + '...' : app.name}
                       {isActive && !isIgnored && <span className="text-[9px] text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 tracking-wider">ACTIVE</span>}
                       {isIgnored && <span className="text-[9px] text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20 tracking-wider">IGNORED</span>}
                     </p>
-                    <p className={`text-xl font-black text-[rgb(var(--a1))] tracking-wide mt-1 truncate ${isIgnored ? 'opacity-70' : ''}`}>{formatTime(app.time)} <span className="text-sm font-medium text-[var(--text)] opacity-40 lowercase">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
+                    <p className={`text-base font-black text-[rgb(var(--a1))] tracking-wide mt-0.5 truncate ${isIgnored ? 'opacity-70' : ''}`}>{formatTime(app.time)} <span className="text-[10px] font-bold text-[var(--text)] opacity-40 uppercase tracking-widest ml-1">{analyticsStartDate === todayStr && analyticsEndDate === todayStr ? 'today' : 'total'}</span></p>
                   </div>
                 </div>
               )})}
