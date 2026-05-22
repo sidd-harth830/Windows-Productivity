@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie } from 'recharts'
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
@@ -132,6 +132,16 @@ const App: React.FC = () => {
       const success = await (window.api as any).refreshAppIcon(contextMenu.appName);
       if (success) showToast('Icon Refreshed', `Successfully reloaded icon for ${contextMenu.appName}.`);
       else showToast('Refresh Failed', `Could not find executable for ${contextMenu.appName}.`);
+    }
+    setContextMenu(null);
+  };
+
+  const handleOpenLocation = async () => {
+    if (contextMenu && window.api && (window.api as any).openFileLocation) {
+      const success = await (window.api as any).openFileLocation(contextMenu.appName);
+      if (!success) {
+        showToast('Action Failed', `Could not find executable path for ${contextMenu.appName}.`);
+      }
     }
     setContextMenu(null);
   };
@@ -493,6 +503,39 @@ const App: React.FC = () => {
     }
   }
 
+  // Advanced Streak Calculator
+  const currentStreak = useMemo(() => {
+    let streak = 0;
+    const goalSeconds = dailyFocusGoal * 3600;
+    const d = new Date();
+    const todayStr = d.toISOString().split('T')[0];
+    const todayData = activeApp ? activeApp.allUsage : (historyData[todayStr] || {});
+    const todayUptime = Object.values(todayData).reduce((a, b) => (a as number) + (b as number), 0) as number;
+    
+    let dayOffset = 0;
+    if (todayUptime >= goalSeconds) {
+      streak++;
+      dayOffset = 1;
+    } else {
+      // If goal isn't met today yet, check if it was met yesterday to keep streak alive
+      let yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      let yStr = yesterday.toISOString().split('T')[0];
+      let yUptime = Object.values(historyData[yStr] || {}).reduce((a, b) => (a as number) + (b as number), 0) as number;
+      if (yUptime < goalSeconds) return 0; // Streak broken
+      dayOffset = 1;
+    }
+    
+    for (let i = dayOffset; i < 365; i++) {
+      let pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - i);
+      let uptime = Object.values(historyData[pastDate.toISOString().split('T')[0]] || {}).reduce((a, b) => (a as number) + (b as number), 0) as number;
+      if (uptime >= goalSeconds) streak++;
+      else break;
+    }
+    return streak;
+  }, [historyData, activeApp, dailyFocusGoal]);
+
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
@@ -519,6 +562,12 @@ const App: React.FC = () => {
               Productivity Dashboard
             </h1>
             <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Real-time application footprint analysis.</p>
+          </div>
+          <div className="flex items-center gap-2.5 bg-[var(--panel-bg)] border border-[var(--panel-border)] px-4 py-2 rounded-2xl shadow-inner mb-1">
+            <Flame className={`w-5 h-5 ${currentStreak > 0 ? 'text-orange-500 animate-pulse drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]' : 'text-[var(--text)] opacity-40'}`} />
+            <div className="flex flex-col">
+              <span className="text-sm font-black text-[var(--text)] leading-none">{currentStreak} <span className="opacity-50 text-xs font-bold tracking-widest uppercase ml-1">Day Streak</span></span>
+            </div>
           </div>
         </div>
 
@@ -1254,14 +1303,24 @@ const App: React.FC = () => {
   // Special Route strictly for the frameless Mini Player window
   const isMiniPlayer = window.location.hash === '#mini';
 
+  // Force the underlying document to be 100% transparent to support perfectly rounded corners
+  useEffect(() => {
+    if (isMiniPlayer) {
+      document.body.style.background = 'transparent';
+      document.documentElement.style.background = 'transparent';
+    } else {
+      document.body.style.background = '';
+      document.documentElement.style.background = '';
+    }
+  }, [isMiniPlayer]);
+
   if (isMiniPlayer) {
     return (
-      // Outer container: Fully transparent with padding (p-3) so shadows don't hit the window edges
       <div
-        className="w-screen h-screen bg-transparent p-4 flex items-center justify-center font-sans"
+        className="w-screen h-screen bg-transparent p-6 flex items-center justify-center font-sans overflow-hidden"
       >
         {/* Inner container: The actual glass card */}
-        <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] relative border border-[rgba(var(--a1),0.3)] shadow-[0_15px_40px_rgba(0,0,0,0.8)] transition-colors duration-500 rounded-[28px] overflow-hidden">
+        <div className="w-full h-full flex flex-col items-center justify-center bg-[var(--bg)]/95 backdrop-blur-3xl text-[var(--text)] [-webkit-app-region:drag] relative border-2 border-[rgba(var(--a1),0.4)] shadow-[0_15px_40px_rgba(0,0,0,0.9)] transition-colors duration-500 rounded-[32px] overflow-hidden">
 
           <button onClick={() => (window.api as any)?.closeMiniPlayer()} className="absolute top-4 right-4 p-2 opacity-50 hover:opacity-100 hover:bg-white/10 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all z-50 pointer-events-auto">
             <X className="w-4 h-4" />
@@ -1302,6 +1361,9 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
             <button onClick={() => (window.api as any).minimizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
               <MinusIcon className="w-4 h-4" />
+            </button>
+            <button onClick={() => (window.api as any).maximizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+              <Square className="w-3.5 h-3.5" strokeWidth={3} />
             </button>
             <button onClick={() => (window.api as any).closeWindow?.()} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
               <X className="w-4 h-4" />
@@ -1366,6 +1428,9 @@ const App: React.FC = () => {
         <div className="flex items-center gap-2 [-webkit-app-region:no-drag]">
           <button onClick={() => (window.api as any).minimizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
             <MinusIcon className="w-4 h-4" />
+          </button>
+          <button onClick={() => (window.api as any).maximizeWindow?.()} className="p-1.5 rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
+            <Square className="w-3.5 h-3.5" strokeWidth={3} />
           </button>
           <button onClick={() => (window.api as any).closeWindow?.()} className="p-1.5 rounded-lg hover:bg-red-500 hover:text-white text-[var(--text)] opacity-70 hover:opacity-100 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
@@ -1455,7 +1520,7 @@ const App: React.FC = () => {
       <Toaster theme={effectiveTheme as any} toastOptions={{ style: { background: 'var(--panel-bg)', color: 'var(--text)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }, className: 'font-sans font-medium' }} />
 
       {/* Custom Right-Click Context Menu */}
-      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} onHideApp={handleHideApp} />
+      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} onHideApp={handleHideApp} onOpenLocation={handleOpenLocation} />
 
       {/* Confirmation Modal */}
       <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>

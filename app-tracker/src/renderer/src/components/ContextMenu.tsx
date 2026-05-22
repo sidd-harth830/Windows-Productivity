@@ -1,37 +1,41 @@
-import React from 'react'
-import { RefreshCw, EyeOff } from './Icons'
+import React, { useEffect, useRef } from 'react';
 
 interface ContextMenuProps {
-    contextMenu: { x: number; y: number; appName: string } | null;
-    onClose: () => void;
-    onRefreshIcon: () => void;
-    onHideApp: () => void;
+  contextMenu: { x: number; y: number; appName: string } | null;
+  onClose: () => void;
+  onRefreshIcon: () => void;
+  onHideApp: () => void;
+  onOpenLocation: () => void;
 }
 
-const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefreshIcon, onHideApp }) => {
-    if (!contextMenu) return null;
+const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefreshIcon, onHideApp, onOpenLocation }) => {
+  const menuRef = useRef<HTMLDivElement>(null);
 
-    return (
-        <>
-            <div className="fixed inset-0 z-[100]" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }}></div>
-            <div 
-                className="fixed z-[101] bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-1.5 rounded-xl shadow-2xl flex flex-col min-w-[170px] animate-in fade-in zoom-in-95 duration-200"
-                style={{ top: Math.min(contextMenu.y, window.innerHeight - 100), left: Math.min(contextMenu.x, window.innerWidth - 180) }}
-            >
-                <div className="px-3 py-2 text-[11px] font-black text-[var(--text)] opacity-50 uppercase tracking-widest border-b border-[var(--panel-border)] mb-1 truncate drop-shadow-sm">
-                    {contextMenu.appName}
-                </div>
-                <button onClick={onRefreshIcon} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] hover:text-[rgb(var(--a1))] rounded-lg transition-colors text-left">
-                    <RefreshCw className="w-4 h-4" />
-                    Refresh Icon
-                </button>
-                <button onClick={onHideApp} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-400 hover:bg-[rgba(239,68,68,0.1)] rounded-lg transition-colors text-left mt-1">
-                    <EyeOff className="w-4 h-4" />
-                    Hide App
-                </button>
-            </div>
-        </>
-    );
-}
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    if (contextMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [contextMenu, onClose]);
 
+  if (!contextMenu) return null;
+
+  return (
+    <div ref={menuRef} className="fixed z-[9999] bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-1.5 rounded-xl shadow-2xl flex flex-col min-w-[200px]" style={{ top: contextMenu.y, left: contextMenu.x }}>
+      <div className="px-3 py-2 text-xs font-black text-[var(--text)] opacity-50 uppercase tracking-widest border-b border-[var(--panel-border)] mb-1 truncate">
+        {contextMenu.appName}
+      </div>
+      <button onClick={onOpenLocation} className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] rounded-lg transition-colors cursor-pointer text-left">
+        Open File Location
+      </button>
+      <button onClick={onRefreshIcon} className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] rounded-lg transition-colors cursor-pointer text-left">
+        Refresh App Icon
+      </button>
+      <button onClick={onHideApp} className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer text-left mt-1 border-t border-[var(--panel-border)] pt-2">
+        Hide Application
+      </button>
+    </div>
+  );
+};
 export default ContextMenu;

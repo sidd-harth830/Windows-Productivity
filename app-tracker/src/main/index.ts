@@ -1,9 +1,10 @@
-import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification, powerMonitor } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Tray, Menu, dialog, Notification, powerMonitor, globalShortcut } from 'electron'
 import { join } from 'path'
 import { exec } from 'child_process'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as db from './database' // Fully integrated SQLite database!
+import { autoUpdater } from 'electron-updater'
 
 let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
@@ -137,6 +138,14 @@ ipcMain.on('minimize-window', (event) => {
   if (win) win.minimize();
 });
 
+ipcMain.on('maximize-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    if (win.isMaximized()) win.restore();
+    else win.maximize();
+  }
+});
+
 ipcMain.on('close-window', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.close(); // Triggers the 'close' event which hides it cleanly
@@ -206,6 +215,15 @@ ipcMain.handle('refresh-app-icon', async (_event, appName: string) => {
     }
     return false;
   } catch (e) { return false; }
+});
+
+ipcMain.handle('open-file-location', (_event, appName: string) => {
+  const exePath = db.getAppPath(appName);
+  if (exePath) {
+    shell.showItemInFolder(exePath); // Opens Windows Explorer directly to the file!
+    return true;
+  }
+  return false;
 });
 
 ipcMain.handle('clear-usage-data', async () => {
@@ -403,7 +421,7 @@ function createWindow(): BrowserWindow {
 
 function createMiniPlayerWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 250, height: 180, resizable: false,
+    width: 280, height: 210, resizable: false, // Increased bounds for proper drop-shadow padding
     alwaysOnTop: true, frame: false, transparent: true,
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: false }
   });
@@ -419,6 +437,20 @@ function createMiniPlayerWindow(): BrowserWindow {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');
   
+  // --- Auto Updater Setup ---
+  autoUpdater.checkForUpdatesAndNotify();
+  autoUpdater.on('update-downloaded', () => {
+    new Notification({ title: 'ForgePulse Update Ready', body: 'A new version has been downloaded and will install on restart.' }).show();
+  });
+
+  // --- Global Keyboard Shortcuts ---
+  // Toggle Focus Mode instantly from anywhere in Windows via Ctrl+Shift+F (or Cmd+Shift+F on Mac)
+  globalShortcut.register('CommandOrControl+Shift+F', () => {
+    isFocusModeEnabled = !isFocusModeEnabled;
+    updateTrayMenu();
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('sync-focus-mode', isFocusModeEnabled));
+  });
+
   // Warm-up Cache: Ensure all previously tracked apps have icons loaded to DB
   for (const [appName, exePath] of Object.entries(metadata.paths)) {
     if (exePath && !appIcons[appName]) { 
@@ -446,6 +478,11 @@ app.whenReady().then(() => {
 
   startTracking(mainWindow);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+});
+
+// Clean up global shortcuts when quitting to free them back to the OS
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

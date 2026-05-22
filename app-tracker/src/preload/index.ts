@@ -14,6 +14,7 @@ const api = {
 
   // NEW: Custom Window Controls & Focus Sync
   minimizeWindow: () => ipcRenderer.send('minimize-window'),
+  maximizeWindow: () => ipcRenderer.send('maximize-window'),
   closeWindow: () => ipcRenderer.send('close-window'),
   onSyncFocusMode: (callback: (enabled: boolean) => void) => ipcRenderer.on('sync-focus-mode', (_event, enabled) => callback(enabled)),
 
@@ -39,6 +40,9 @@ const api = {
 
   // NEW: Refresh App Icon
   refreshAppIcon: (appName: string) => ipcRenderer.invoke('refresh-app-icon', appName),
+
+  // NEW: Open File Location
+  openFileLocation: (appName: string) => ipcRenderer.invoke('open-file-location', appName),
 
   // NEW: Clear Usage Data
   clearUsageData: () => ipcRenderer.invoke('clear-usage-data'),
