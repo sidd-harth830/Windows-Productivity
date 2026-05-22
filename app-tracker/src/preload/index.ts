@@ -3,6 +3,9 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
   onWindowUpdate: (callback: (data: any) => void) => ipcRenderer.on('window-update', (_event, data) => callback(data)),
+  getInitialData: () => ipcRenderer.invoke('get-initial-data'),
+  onIconUpdate: (callback: (data: any) => void) => ipcRenderer.on('icon-update', (_event, data) => callback(data)),
+
   toggleFocusMode: (enabled: boolean) => ipcRenderer.send('toggle-focus-mode', enabled),
   updateBlockList: (rules: any) => ipcRenderer.send('update-block-list', rules),
   

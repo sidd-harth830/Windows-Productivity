@@ -14,7 +14,7 @@ import { format } from 'date-fns'
 import { Toaster, toast } from 'sonner'
 
 interface WindowData {
-  name: string; title: string; focusTime: number;
+  name: string; title: string;
   allUsage: Record<string, number>; appIcons: Record<string, string>;
 }
 
@@ -148,14 +148,42 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (window.api && window.api.onWindowUpdate) {
+    if (window.api) {
+      // 1. Get all initial data on startup
+      (window.api as any).getInitialData().then((data: any) => {
+        setActiveApp({
+          name: '', // No active app initially
+          title: '',
+          allUsage: data.allUsage,
+          appIcons: data.appIcons
+        });
+        setBlockList(data.blockList);
+        setIsFocusMode(data.isFocusMode);
+        setIsLoading(false); // Data is loaded, show UI
+      });
+
+      // 2. Listen for periodic, smaller updates
       window.api.onWindowUpdate((data: WindowData) => {
-        setActiveApp(data);
-        setIsLoading(false); // Hide the loading screen as soon as the first payload arrives
+        setActiveApp(prev => {
+          if (!prev) return null; // Should not happen after initial load
+          return {
+            ...prev,
+            name: data.name,
+            title: data.title,
+            allUsage: data.allUsage,
+          };
+        });
+      });
+
+      // 3. Listen for individual icon updates to merge them in
+      (window.api as any).onIconUpdate((data: { appName: string; icon: string }) => {
+        setActiveApp(prev => {
+          if (!prev) return null;
+          return { ...prev, appIcons: { ...prev.appIcons, [data.appName]: data.icon } };
+        });
       });
     }
   }, []);
-
   useEffect(() => {
     if (activeApp?.name && isAppValid(activeApp.name)) {
       setLastActiveValidApp(activeApp.name);
@@ -689,7 +717,9 @@ const App: React.FC = () => {
       time: app.time
     }));
 
-    const filteredAnalyticsApps = analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
+    const filteredAnalyticsApps = useMemo(() => {
+      return analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
+    }, [analyticsChartData, analyticsSearch]);
 
     const getInsight = () => {
       if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";

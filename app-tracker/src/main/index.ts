@@ -90,6 +90,15 @@ function checkDateRoll() {
   }
 }
 
+ipcMain.handle('get-initial-data', () => {
+  return {
+    allUsage: appUsage,
+    appIcons: appIcons,
+    blockList: currentBlockList,
+    isFocusMode: isFocusModeEnabled
+  };
+});
+
 ipcMain.on('toggle-focus-mode', (_event, enabled: boolean) => isFocusModeEnabled = enabled);
 ipcMain.on('update-block-list', (_event, rules: Record<string, 'fully_blocked' | number>) => currentBlockList = rules);
 ipcMain.on('update-preferences', (_event, prefs) => {
@@ -323,8 +332,14 @@ async function startTracking(mainWindow: BrowserWindow) {
           if (!appIcons[displayAppName] && rawPath) {
             try {
               const nativeIcon = await app.getFileIcon(rawPath, { size: 'large' });
-              appIcons[displayAppName] = nativeIcon.toDataURL(); 
+              const iconDataURL = nativeIcon.toDataURL();
+              appIcons[displayAppName] = iconDataURL; 
               appPaths[displayAppName] = rawPath;
+
+              BrowserWindow.getAllWindows().forEach(win => {
+                win.webContents.send('icon-update', { appName: displayAppName, icon: iconDataURL });
+              });
+
               fs.promises.writeFile(pathsDataPath, encryptData(JSON.stringify(appPaths))).catch(()=>{});
             } catch (e) {}
           }
@@ -393,9 +408,7 @@ async function startTracking(mainWindow: BrowserWindow) {
             mainWindow.webContents.send('window-update', {
               name: displayAppName, 
               title: windowInfo.title,
-              focusTime: liveUsageData[displayAppName] || 0,
               allUsage: liveUsageData,
-              appIcons: appIcons
             });
 
             fs.promises.writeFile(dataPath, encryptData(JSON.stringify(allUsageData))).catch(()=>{});
