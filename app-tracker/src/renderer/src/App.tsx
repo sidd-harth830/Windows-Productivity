@@ -486,7 +486,7 @@ const App: React.FC = () => {
     .map(([name, time]) => ({ name, time: time as number }))
     .sort((a, b) => b.time - a.time);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = useCallback(({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const iconUrl = activeApp?.appIcons?.[label];
       return (
@@ -504,9 +504,9 @@ const App: React.FC = () => {
       );
     }
     return null;
-  };
+  }, [activeApp]);
 
-  const CustomYAxisTick = ({ x, y, payload }: any) => {
+  const CustomYAxisTick = useCallback(({ x, y, payload }: any) => {
     const val = payload?.value || '';
     const iconUrl = activeApp?.appIcons?.[val];
     const isActive = lastActiveValidApp === val;
@@ -530,9 +530,9 @@ const App: React.FC = () => {
         )}
       </g>
     );
-  };
+  }, [activeApp, lastActiveValidApp, hiddenApps]);
 
-  const CustomXAxisTick = ({ x, y, payload }: any) => {
+  const CustomXAxisTick = useCallback(({ x, y, payload }: any) => {
     const val = payload?.value || '';
     const isIgnored = hiddenApps.includes(val);
     const text = val.length > 12 ? val.substring(0, 12) + '...' : val;
@@ -543,9 +543,67 @@ const App: React.FC = () => {
         </text>
       </g>
     );
-  };
+  }, [hiddenApps]);
 
-  const PIE_COLORS = [
+  const TrendTooltip = useCallback(({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const iconUrl = activeApp?.appIcons?.[data.topApp];
+      return (
+        <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] flex flex-col gap-2 min-w-[160px]">
+          <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{label}</p>
+          <p className="text-[rgb(var(--a1))] font-black text-xs tracking-widest mb-1">
+            TOTAL TIME: <span className="text-[var(--text)] ml-1">{formatTime(data.time)}</span>
+          </p>
+          {data.topApp && (
+            <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[var(--panel-border)]">
+              <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                {iconUrl ? <img src={iconUrl} alt={data.topApp} className="max-w-full max-h-full object-contain drop-shadow-sm" /> : <GenericAppIcon />}
+              </div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[var(--text)] font-bold text-xs truncate" title={data.topApp}>{data.topApp}</span>
+                <span className="text-[var(--text)] opacity-60 font-medium text-[10px]">{formatTime(data.topAppTime)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  }, [activeApp]);
+
+  const TrendXAxisTick = useCallback(({ x, y, payload }: any) => {
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={16} textAnchor="middle" fill="var(--text)" opacity="0.6" fontSize="11" fontWeight="bold">
+          {payload.value}
+        </text>
+      </g>
+    );
+  }, []);
+
+  const PieActiveShape = useCallback((props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 6}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          stroke="var(--bg)"
+          strokeWidth={3}
+          cursor="pointer"
+          className="drop-shadow-md transition-all duration-300"
+        />
+      </g>
+    );
+  }, []);
+
+  const PIE_COLORS = useMemo(() => [
     'rgb(var(--a1))',
     'rgb(var(--a2))',
     'rgba(var(--a1), 0.75)',
@@ -553,7 +611,10 @@ const App: React.FC = () => {
     'rgba(var(--a1), 0.45)',
     'rgba(var(--a2), 0.45)',
     'rgba(var(--text), 0.3)'
-  ];
+  ], []);
+
+  const barChartMargin = useMemo(() => ({ top: 0, right: 0, left: 20, bottom: 0 }), []);
+  const areaChartMargin = useMemo(() => ({ top: 10, right: 10, left: 15, bottom: 10 }), []);
 
   const categorizeApp = (name: string) => {
     if (appCategories[name]) return appCategories[name];
@@ -619,6 +680,40 @@ const App: React.FC = () => {
     .sort((a, b) => b.value - a.value);
 
   const totalCategoryTime = pieData.reduce((sum, item) => sum + item.value, 0);
+
+  const PieTooltip = useCallback(({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const percent = totalCategoryTime > 0
+        ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1)
+        : '0.0';
+      const data = payload[0].payload;
+      return (
+        <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 min-w-[200px]">
+          <div className="flex justify-between items-center mb-2 pb-2 border-b border-[var(--panel-border)]">
+            <p className="text-[var(--text)] font-bold text-sm tracking-wide">{data.name}</p>
+            <p className="text-[rgb(var(--a2))] font-black text-[10px] tracking-widest bg-[rgba(var(--a2),0.1)] border border-[rgba(var(--a2),0.2)] px-2 py-0.5 rounded">
+              {percent}%
+            </p>
+          </div>
+          <p className="text-[var(--text)] opacity-60 font-medium text-[10px] tracking-widest uppercase mb-3">Total Time: <span className="text-[var(--text)] font-bold opacity-100 ml-1">{formatTime(data.value)}</span></p>
+          <div className="flex flex-col gap-1.5">
+            {data.apps.slice(0, 4).map((app: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center text-xs gap-4">
+                <span className="text-[var(--text)] font-bold truncate max-w-[130px] opacity-90">{app.name}</span>
+                <span className="text-[var(--text)] opacity-50 font-medium whitespace-nowrap">{formatTime(app.time)}</span>
+              </div>
+            ))}
+            {data.apps.length > 4 && (
+              <p className="text-[var(--text)] opacity-40 text-[10px] font-bold mt-1 text-center italic">
+                + {data.apps.length - 4} more
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }, [totalCategoryTime]);
 
   const heatmapDays: { dateStr: string, score: number, hasData: boolean, isFuture: boolean, goalMet: boolean, uptime: number }[] = [];
   const currentDayOfWeek = new Date().getDay();
@@ -914,7 +1009,7 @@ const App: React.FC = () => {
                 <div className="w-full relative" style={{ height: `${Math.max(300, filteredChartData.length * 60)}px` }}>
                   <div className="absolute inset-0">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={filteredChartData} layout="vertical" margin={{ top: 0, right: 0, left: 20, bottom: 0 }}>
+                      <BarChart data={filteredChartData} layout="vertical" margin={barChartMargin}>
                         <XAxis type="number" hide />
                         <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={<CustomYAxisTick />} width={180} />
                         <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
@@ -1103,43 +1198,6 @@ const App: React.FC = () => {
       }
     }
 
-    const TrendTooltip = ({ active, payload, label }: any) => {
-      if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        const iconUrl = activeApp?.appIcons?.[data.topApp];
-        return (
-          <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] flex flex-col gap-2 min-w-[160px]">
-            <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{label}</p>
-            <p className="text-[rgb(var(--a1))] font-black text-xs tracking-widest mb-1">
-              TOTAL TIME: <span className="text-[var(--text)] ml-1">{formatTime(data.time)}</span>
-            </p>
-            {data.topApp && (
-              <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[var(--panel-border)]">
-                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                  {iconUrl ? <img src={iconUrl} alt={data.topApp} className="max-w-full max-h-full object-contain drop-shadow-sm" /> : <GenericAppIcon />}
-                </div>
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-[var(--text)] font-bold text-xs truncate" title={data.topApp}>{data.topApp}</span>
-                  <span className="text-[var(--text)] opacity-60 font-medium text-[10px]">{formatTime(data.topAppTime)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      }
-      return null;
-    };
-
-    const TrendXAxisTick = ({ x, y, payload }: any) => {
-      return (
-        <g transform={`translate(${x},${y})`}>
-          <text x={0} y={0} dy={16} textAnchor="middle" fill="var(--text)" opacity="0.6" fontSize="11" fontWeight="bold">
-            {payload.value}
-          </text>
-        </g>
-      );
-    };
-
     const getInsight = () => {
       if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";
 
@@ -1276,7 +1334,7 @@ const App: React.FC = () => {
             {trendData.length > 0 ? (
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 15, bottom: 10 }}>
+                  <AreaChart data={trendData} margin={areaChartMargin}>
                     <defs>
                       <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
@@ -1427,26 +1485,7 @@ const App: React.FC = () => {
                           <Pie 
                             data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none"
                             activeIndex={hoveredCategory ? pieData.findIndex(d => d.name === hoveredCategory) : undefined}
-                            activeShape={(props: any) => {
-                              const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                              return (
-                                <g>
-                                  <Sector
-                                    cx={cx}
-                                    cy={cy}
-                                    innerRadius={innerRadius}
-                                    outerRadius={outerRadius + 6}
-                                    startAngle={startAngle}
-                                    endAngle={endAngle}
-                                    fill={fill}
-                                    stroke="var(--bg)"
-                                    strokeWidth={3}
-                                    cursor="pointer"
-                                    className="drop-shadow-md transition-all duration-300"
-                                  />
-                                </g>
-                              );
-                            }}
+                            activeShape={PieActiveShape}
                           >
                             {pieData.map((entry, index) => (
                               <Cell 
@@ -1461,39 +1500,7 @@ const App: React.FC = () => {
                             ))}
                           </Pie>
                           <Tooltip
-                            content={({ active, payload }: any) => {
-                              if (active && payload && payload.length) {
-                                const percent = totalCategoryTime > 0
-                                  ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1)
-                                  : '0.0';
-                              const data = payload[0].payload;
-                                return (
-                                <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 min-w-[200px]">
-                                  <div className="flex justify-between items-center mb-2 pb-2 border-b border-[var(--panel-border)]">
-                                    <p className="text-[var(--text)] font-bold text-sm tracking-wide">{data.name}</p>
-                                    <p className="text-[rgb(var(--a2))] font-black text-[10px] tracking-widest bg-[rgba(var(--a2),0.1)] border border-[rgba(var(--a2),0.2)] px-2 py-0.5 rounded">
-                                      {percent}%
-                                    </p>
-                                  </div>
-                                  <p className="text-[var(--text)] opacity-60 font-medium text-[10px] tracking-widest uppercase mb-3">Total Time: <span className="text-[var(--text)] font-bold opacity-100 ml-1">{formatTime(data.value)}</span></p>
-                                  <div className="flex flex-col gap-1.5">
-                                    {data.apps.slice(0, 4).map((app: any, idx: number) => (
-                                      <div key={idx} className="flex justify-between items-center text-xs gap-4">
-                                        <span className="text-[var(--text)] font-bold truncate max-w-[130px] opacity-90">{app.name}</span>
-                                        <span className="text-[var(--text)] opacity-50 font-medium whitespace-nowrap">{formatTime(app.time)}</span>
-                                      </div>
-                                    ))}
-                                    {data.apps.length > 4 && (
-                                      <p className="text-[var(--text)] opacity-40 text-[10px] font-bold mt-1 text-center italic">
-                                        + {data.apps.length - 4} more
-                                      </p>
-                                    )}
-                                  </div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
+                            content={PieTooltip}
                           />
                         </PieChart>
                       </ResponsiveContainer>
