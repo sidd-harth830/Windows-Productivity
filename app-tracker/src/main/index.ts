@@ -77,6 +77,7 @@ function updateTrayMenu() {
 ipcMain.handle('get-initial-data', () => {
   return {
     allUsage: appUsage,
+    hourlyUsageToday: db.getHourlyUsageForDate(todayStr),
     appIcons: appIcons,
     blockList: currentBlockList,
     isFocusMode: isFocusModeEnabled
@@ -282,7 +283,10 @@ ipcMain.handle('browse-for-exe', async () => {
   return displayAppName;
 });
 
-ipcMain.handle('get-history', () => db.getAllUsage());
+ipcMain.handle('get-history', () => ({
+  daily: db.getAllUsage(),
+  hourly: db.getHourlyUsage()
+}));
 
 ipcMain.handle('check-for-updates', async () => {
   if (app.isPackaged) {
@@ -415,6 +419,7 @@ async function startTracking(mainWindow: BrowserWindow) {
               name: displayAppName, 
               title: windowInfo.title,
               allUsage: { ...appUsage },
+              hourlyUsageToday: db.getHourlyUsageForDate(todayStr)
             });
             lastUiUpdate = now;
           }

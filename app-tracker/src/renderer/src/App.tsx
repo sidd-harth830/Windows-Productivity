@@ -16,6 +16,7 @@ import { Toaster, toast } from 'sonner'
 interface WindowData {
   name: string; title: string;
   allUsage: Record<string, number>; appIcons: Record<string, string>;
+  hourlyUsageToday?: Record<string, Record<string, number>>;
 }
 
 const MinusIcon = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
@@ -45,6 +46,7 @@ const App: React.FC = () => {
   const [dashboardSearch, setDashboardSearch] = useState<string>('');
   const [sortMode, setSortMode] = useState<'duration' | 'alphabetical'>('duration');
   const [historyData, setHistoryData] = useState<Record<string, Record<string, number>>>({});
+  const [hourlyHistoryData, setHourlyHistoryData] = useState<Record<string, Record<string, number>>>({});
   const [analyticsStartDate, setAnalyticsStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [analyticsEndDate, setAnalyticsEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [datePreset, setDatePreset] = useState<string>('today');
@@ -97,7 +99,12 @@ const App: React.FC = () => {
     if (activeTab === 'analytics' && window.api && (window.api as any).getHistory) {
       if (Object.keys(historyData).length === 0) setIsAnalyticsLoading(true);
       (window.api as any).getHistory().then((data: any) => {
-        setHistoryData(data);
+        if (data && data.daily) {
+          setHistoryData(data.daily);
+          setHourlyHistoryData(data.hourly || {});
+        } else {
+          setHistoryData(data);
+        }
         setIsAnalyticsLoading(false);
       });
     }
@@ -205,6 +212,12 @@ const App: React.FC = () => {
           allUsage: data.allUsage,
           appIcons: data.appIcons
         });
+        if (data.hourlyUsageToday) {
+          setHourlyHistoryData(prev => ({
+            ...prev,
+            ...data.hourlyUsageToday
+          }));
+        }
         setBlockList(data.blockList);
         setIsFocusMode(data.isFocusMode);
         setIsLoading(false); // Data is loaded, show UI
@@ -221,6 +234,12 @@ const App: React.FC = () => {
             allUsage: data.allUsage,
           };
         });
+        if (data.hourlyUsageToday) {
+          setHourlyHistoryData(prev => ({
+            ...prev,
+            ...data.hourlyUsageToday
+          }));
+        }
       });
 
       // 3. Listen for individual icon updates to merge them in
@@ -308,7 +327,8 @@ const App: React.FC = () => {
     let fullHistory = historyData;
 
     if (Object.keys(fullHistory).length === 0 && window.api && (window.api as any).getHistory) {
-      fullHistory = await (window.api as any).getHistory();
+      const history = await (window.api as any).getHistory();
+      fullHistory = history.daily ? history.daily : history;
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -898,11 +918,105 @@ const App: React.FC = () => {
       );
     }
 
-    // Visualizing the actual top application times in the trend chart
-    const realTrendData = analyticsChartData.slice(0, 7).map(app => ({
-      name: app.name,
-      time: app.time
-    }));
+    let trendData: any[] = [];
+    if (analyticsStartDate === analyticsEndDate) {
+      const day = analyticsStartDate;
+      for (let i = 0; i < 24; i++) {
+        const hourStr = i.toString().padStart(2, '0');
+        const hourKey = `${day}T${hourStr}`;
+        const hourData = hourlyHistoryData[hourKey] || {};
+        
+        let totalTime = 0;
+        let topApp = { name: '', time: 0 };
+        
+        for (const [appName, time] of Object.entries(hourData)) {
+          if (isAppValid(appName)) {
+            totalTime += time;
+            if (time > topApp.time) {
+              topApp = { name: appName, time };
+            }
+          }
+        }
+        
+        const now = new Date();
+        const isToday = day === todayStr;
+        const currentHour = now.getHours();
+        
+        if (!isToday || i <= currentHour) {
+          trendData.push({
+            label: `${i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}`,
+            time: totalTime,
+            topApp: topApp.name,
+            topAppTime: topApp.time
+          });
+        }
+      }
+    } else {
+      let currDate = new Date(analyticsStartDate + "T00:00:00");
+      const endDate = new Date(analyticsEndDate + "T00:00:00");
+      while (currDate <= endDate) {
+        const dStr = currDate.toISOString().split('T')[0];
+        const dayData = (dStr === todayStr && activeApp) ? activeApp.allUsage : (historyData[dStr] || {});
+        
+        let totalTime = 0;
+        let topApp = { name: '', time: 0 };
+        
+        for (const [appName, time] of Object.entries(dayData)) {
+          if (isAppValid(appName)) {
+            totalTime += time;
+            if (time > topApp.time) {
+              topApp = { name: appName, time };
+            }
+          }
+        }
+        
+        trendData.push({
+          label: format(currDate, 'MMM d'),
+          time: totalTime,
+          topApp: topApp.name,
+          topAppTime: topApp.time
+        });
+        
+        currDate.setDate(currDate.getDate() + 1);
+      }
+    }
+
+    const TrendTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        const iconUrl = activeApp?.appIcons?.[data.topApp];
+        return (
+          <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] flex flex-col gap-2 min-w-[160px]">
+            <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{label}</p>
+            <p className="text-[rgb(var(--a1))] font-black text-xs tracking-widest mb-1">
+              TOTAL TIME: <span className="text-[var(--text)] ml-1">{formatTime(data.time)}</span>
+            </p>
+            {data.topApp && (
+              <div className="flex items-center gap-3 mt-2 pt-2 border-t border-[var(--panel-border)]">
+                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                  {iconUrl ? <img src={iconUrl} alt={data.topApp} className="max-w-full max-h-full object-contain drop-shadow-sm" /> : <GenericAppIcon />}
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-[var(--text)] font-bold text-xs truncate" title={data.topApp}>{data.topApp}</span>
+                  <span className="text-[var(--text)] opacity-60 font-medium text-[10px]">{formatTime(data.topAppTime)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+      return null;
+    };
+
+    const TrendXAxisTick = ({ x, y, payload }: any) => {
+      return (
+        <g transform={`translate(${x},${y})`}>
+          <text x={0} y={0} dy={16} textAnchor="middle" fill="var(--text)" opacity="0.6" fontSize="11" fontWeight="bold">
+            {payload.value}
+          </text>
+        </g>
+      );
+    };
 
     const filteredAnalyticsApps = analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
 
@@ -1027,10 +1141,10 @@ const App: React.FC = () => {
         <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[300px] sm:min-h-[350px]" style={{ animationDelay: '0.15s' }}>
           <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] mb-4 sm:mb-6 tracking-wide">Screen Time Trends</h2>
           <div className="flex-1 w-full min-h-[250px] min-w-0 relative">
-            {realTrendData.length > 0 ? (
+            {trendData.length > 0 ? (
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={realTrendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
+                  <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
@@ -1038,11 +1152,11 @@ const App: React.FC = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--panel-border)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--panel-border)" tick={<CustomXAxisTick />} tickLine={false} axisLine={false} dy={10} />
+                    <XAxis dataKey="label" stroke="var(--panel-border)" tick={<TrendXAxisTick />} tickLine={false} axisLine={false} dy={10} minTickGap={20} />
                     <YAxis tickFormatter={(val) => formatTime(val)} stroke="var(--panel-border)" tick={{ fill: 'var(--text)', opacity: 0.5, fontSize: 12, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
                     <Tooltip
                       cursor={{ stroke: 'var(--text)', opacity: 0.2, strokeWidth: 2, strokeDasharray: '4 4' }}
-                      content={<CustomTooltip />}
+                      content={<TrendTooltip />}
                     />
                     <Area
                       type="monotone"

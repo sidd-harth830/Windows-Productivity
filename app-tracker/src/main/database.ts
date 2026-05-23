@@ -7,8 +7,9 @@ const dbPath = join(app.getPath('userData'), 'forgepulse_store.json');
 // --- High-Performance In-Memory Cache ---
 let store: {
   daily_usage: Record<string, Record<string, number>>;
+  hourly_usage?: Record<string, Record<string, number>>;
   app_metadata: Record<string, { exe_path: string | null; icon_base64: string | null }>;
-} = { daily_usage: {}, app_metadata: {} };
+} = { daily_usage: {}, hourly_usage: {}, app_metadata: {} };
 
 // --- Safe Disk Operations ---
 const loadDatabase = () => {
@@ -21,6 +22,7 @@ const loadDatabase = () => {
     }
   }
   if (!store.daily_usage) store.daily_usage = {};
+  if (!store.hourly_usage) store.hourly_usage = {};
   if (!store.app_metadata) store.app_metadata = {};
 };
 
@@ -49,6 +51,13 @@ const triggerSave = () => {
 export const upsertUsage = (date: string, appName: string, seconds: number) => {
   if (!store.daily_usage[date]) store.daily_usage[date] = {};
   store.daily_usage[date][appName] = (store.daily_usage[date][appName] || 0) + seconds;
+  
+  const now = new Date();
+  const hourKey = `${date}T${now.getHours().toString().padStart(2, '0')}`;
+  if (!store.hourly_usage) store.hourly_usage = {};
+  if (!store.hourly_usage[hourKey]) store.hourly_usage[hourKey] = {};
+  store.hourly_usage[hourKey][appName] = (store.hourly_usage[hourKey][appName] || 0) + seconds;
+
   triggerSave();
 };
 
@@ -60,15 +69,37 @@ export const getAllUsage = (): Record<string, Record<string, number>> => {
   return store.daily_usage;
 };
 
+export const getHourlyUsage = (): Record<string, Record<string, number>> => {
+  return store.hourly_usage || {};
+};
+
+export const getHourlyUsageForDate = (date: string): Record<string, Record<string, number>> => {
+  const result: Record<string, Record<string, number>> = {};
+  if (store.hourly_usage) {
+    for (const [hourKey, data] of Object.entries(store.hourly_usage)) {
+      if (hourKey.startsWith(date)) {
+        result[hourKey] = data;
+      }
+    }
+  }
+  return result;
+};
+
 export const deleteAppUsage = (date: string, appName: string) => {
   if (store.daily_usage[date]) {
     delete store.daily_usage[date][appName];
-    triggerSave();
   }
+  if (store.hourly_usage) {
+    for (const key of Object.keys(store.hourly_usage)) {
+      if (key.startsWith(date)) delete store.hourly_usage[key][appName];
+    }
+  }
+  triggerSave();
 };
 
 export const clearAllUsage = () => {
   store.daily_usage = {};
+  store.hourly_usage = {};
   triggerSave();
 };
 
