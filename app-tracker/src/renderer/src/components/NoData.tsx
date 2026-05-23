@@ -1,5 +1,3 @@
-import React from 'react';
-
 const NoData = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 647.63626 632.17383"

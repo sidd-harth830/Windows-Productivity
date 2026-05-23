@@ -804,6 +804,7 @@ const App: React.FC = () => {
       const t = setTimeout(() => setShowLevelUp(null), 4500);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [showLevelUp]);
 
   // Weekly Productivity Summary
@@ -889,7 +890,6 @@ const App: React.FC = () => {
 
     const prodScore = calculateProductivityScore(dashboardData);
     const scoreColor = prodScore >= 75 ? 'text-emerald-400' : prodScore >= 40 ? 'text-[rgb(var(--a1))]' : 'text-amber-400';
-    const goalSeconds = dailyFocusGoal * 3600;
 
     return (
       <div ref={dashboardRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
