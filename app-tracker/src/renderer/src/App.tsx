@@ -39,6 +39,11 @@ const App: React.FC = () => {
   const [isMiniPlayerAlwaysOnTop, setIsMiniPlayerAlwaysOnTop] = useState<boolean>(true);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [updateReady, setUpdateReady] = useState<boolean>(false);
+  
+  const [appCategories, setAppCategories] = useState<Record<string, string>>(() => JSON.parse(localStorage.getItem('appCategories') || '{}'));
+  const [showLevelUp, setShowLevelUp] = useState<{rank: string, title: string} | null>(null);
+  const [categoryModalApp, setCategoryModalApp] = useState<string | null>(null);
+  const [categoryInputValue, setCategoryInputValue] = useState<string>('');
 
   const dashboardRef = useRef<HTMLDivElement>(null);
   const analyticsRef = useRef<HTMLDivElement>(null);
@@ -75,6 +80,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('hiddenApps', JSON.stringify(hiddenApps)); }, [hiddenApps]);
   useEffect(() => { localStorage.setItem('showIgnoredApps', JSON.stringify(showIgnoredApps)); }, [showIgnoredApps]);
   useEffect(() => { localStorage.setItem('stopTrackingOnIdle', JSON.stringify(stopTrackingOnIdle)); }, [stopTrackingOnIdle]);
+  useEffect(() => { localStorage.setItem('appCategories', JSON.stringify(appCategories)); }, [appCategories]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -92,8 +98,8 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'analytics' && window.api && (window.api as any).getHistory) {
-      if (Object.keys(historyData).length === 0) setIsAnalyticsLoading(true);
+    if (window.api && (window.api as any).getHistory) {
+      if (Object.keys(historyData).length === 0 && activeTab === 'analytics') setIsAnalyticsLoading(true);
       (window.api as any).getHistory().then((data: any) => {
         if (data && data.daily) {
           setHistoryData(data.daily);
@@ -168,6 +174,14 @@ const App: React.FC = () => {
       if (!success) {
         showToast('Action Failed', `Could not find executable path for ${contextMenu.appName}.`);
       }
+    }
+    setContextMenu(null);
+  };
+
+  const handleOpenCategory = () => {
+    if (contextMenu) {
+      setCategoryModalApp(contextMenu.appName);
+      setCategoryInputValue(categorizeApp(contextMenu.appName));
     }
     setContextMenu(null);
   };
@@ -520,6 +534,7 @@ const App: React.FC = () => {
   ];
 
   const categorizeApp = (name: string) => {
+    if (appCategories[name]) return appCategories[name];
     const n = name.toLowerCase();
     if (n.includes('code') || n.includes('studio') || n.includes('terminal') || n.includes('git') || n.includes('idea')) return 'Development';
     if (n.includes('chrome') || n.includes('edge') || n.includes('firefox') || n.includes('brave') || n.includes('safari') || n.includes('opera')) return 'Browsing';
@@ -533,6 +548,7 @@ const App: React.FC = () => {
     let productiveTime = 0;
     let totalTime = 0;
     data.forEach(app => {
+      if (!isAppValid(app.name)) return;
       totalTime += app.time;
       const cat = categorizeApp(app.name);
       if (cat === 'Development' || cat === 'Productivity') {
@@ -549,6 +565,7 @@ const App: React.FC = () => {
     let prodTime = 0;
     let total = 0;
     Object.entries(dayData).forEach(([app, time]) => {
+      if (!isAppValid(app)) return;
       total += time;
       const cat = categorizeApp(app);
       if (cat === 'Development' || cat === 'Productivity') prodTime += time;
@@ -598,8 +615,14 @@ const App: React.FC = () => {
     const d = new Date();
     const todayStr = d.toISOString().split('T')[0];
     const todayData = activeApp ? activeApp.allUsage : (historyData[todayStr] || {});
-    const todayUptime = Object.values(todayData).reduce((a, b) => (a as number) + (b as number), 0) as number;
     
+    const getValidUptime = (data: Record<string, number> | undefined) => {
+      if (!data) return 0;
+      return Object.entries(data).reduce((acc, [app, time]) => acc + (isAppValid(app) ? time : 0), 0);
+    };
+
+    const todayUptime = getValidUptime(todayData);
+
     let dayOffset = 0;
     if (todayUptime >= goalSeconds) {
       streak++;
@@ -609,7 +632,7 @@ const App: React.FC = () => {
       let yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       let yStr = yesterday.toISOString().split('T')[0];
-      let yUptime = Object.values(historyData[yStr] || {}).reduce((a, b) => (a as number) + (b as number), 0) as number;
+      let yUptime = getValidUptime(historyData[yStr]);
       if (yUptime < goalSeconds) return 0; // Streak broken
       dayOffset = 1;
     }
@@ -617,12 +640,12 @@ const App: React.FC = () => {
     for (let i = dayOffset; i < 365; i++) {
       let pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - i);
-      let uptime = Object.values(historyData[pastDate.toISOString().split('T')[0]] || {}).reduce((a, b) => (a as number) + (b as number), 0) as number;
+      let uptime = getValidUptime(historyData[pastDate.toISOString().split('T')[0]]);
       if (uptime >= goalSeconds) streak++;
       else break;
     }
     return streak;
-  }, [historyData, activeApp, dailyFocusGoal]);
+  }, [historyData, activeApp, dailyFocusGoal, hiddenApps, showIgnoredApps, trackSelf, trackSystemApps]);
 
   const getStreakRank = (streak: number) => {
     if (streak >= 30) return { title: 'Legend', color: 'text-purple-400 drop-shadow-[0_0_5px_rgba(192,132,252,0.5)]' };
@@ -631,6 +654,35 @@ const App: React.FC = () => {
     return { title: 'Novice', color: 'text-[var(--text)] opacity-60' };
   };
   const currentRank = getStreakRank(currentStreak);
+
+  // Streak Level-Up Detection
+  useEffect(() => {
+    const lastNotified = parseInt(localStorage.getItem('lastNotifiedStreak') || '0', 10);
+
+    if (currentStreak === 0 && lastNotified > 0) {
+      localStorage.setItem('lastNotifiedStreak', '0');
+    } else if (currentStreak > lastNotified) {
+      if (currentStreak === 3) {
+        setShowLevelUp({ rank: 'Pro', title: '3 Day Streak!' });
+        localStorage.setItem('lastNotifiedStreak', '3');
+      } else if (currentStreak === 7) {
+        setShowLevelUp({ rank: 'Master', title: '7 Day Streak!' });
+        localStorage.setItem('lastNotifiedStreak', '7');
+      } else if (currentStreak === 30) {
+        setShowLevelUp({ rank: 'Legend', title: '30 Day Streak!' });
+        localStorage.setItem('lastNotifiedStreak', '30');
+      } else {
+        localStorage.setItem('lastNotifiedStreak', currentStreak.toString());
+      }
+    }
+  }, [currentStreak]);
+
+  useEffect(() => {
+    if (showLevelUp) {
+      const t = setTimeout(() => setShowLevelUp(null), 4500);
+      return () => clearTimeout(t);
+    }
+  }, [showLevelUp]);
 
   // Weekly Productivity Summary
   useEffect(() => {
@@ -653,6 +705,7 @@ const App: React.FC = () => {
         const dayData = historyData[dStr] || {};
         
         Object.entries(dayData).forEach(([app, time]) => {
+          if (!isAppValid(app)) return;
           totalTime += time;
           const cat = categorizeApp(app);
           if (cat === 'Development' || cat === 'Productivity') prodTime += time;
@@ -1903,7 +1956,38 @@ const App: React.FC = () => {
       <Toaster theme={effectiveTheme as any} toastOptions={{ style: { background: 'var(--panel-bg)', color: 'var(--text)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }, className: 'font-sans font-medium' }} />
 
       {/* Custom Right-Click Context Menu */}
-      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} onHideApp={handleHideApp} onOpenLocation={handleOpenLocation} />
+      <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} onRefreshIcon={executeIconRefresh} onHideApp={handleHideApp} onOpenLocation={handleOpenLocation} onOpenCategory={handleOpenCategory} />
+
+      {/* Categorize App Modal */}
+      <Dialog open={!!categoryModalApp} onOpenChange={(open) => !open && setCategoryModalApp(null)}>
+        <DialogContent className="bg-[var(--panel-bg)] backdrop-blur-3xl border-[var(--panel-border)] p-8 rounded-3xl shadow-2xl flex flex-col gap-6 min-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[var(--text)] mb-2 flex items-center gap-3">
+              Categorize Application
+            </DialogTitle>
+            <DialogDescription className="text-[var(--text)] opacity-70 text-sm font-medium leading-relaxed max-w-sm">
+              Set a custom productivity category for <span className="font-bold text-[rgb(var(--a1))]">{categoryModalApp}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <Input value={categoryInputValue} onChange={(e) => setCategoryInputValue(e.target.value)} placeholder="e.g. Design, Research, Browsing..." className="font-bold border-2" />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {['Development', 'Browsing', 'Communication', 'Entertainment', 'Productivity', 'Other'].map(preset => (
+                <button key={preset} onClick={() => setCategoryInputValue(preset)} className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-xs font-bold transition-all shadow-inner cursor-pointer">
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter className="flex justify-end gap-3 mt-2">
+            <button onClick={() => setCategoryModalApp(null)} className="px-5 py-2.5 rounded-xl text-sm font-bold text-[var(--text)] opacity-70 hover:opacity-100 hover:bg-[var(--panel-border)] transition-all cursor-pointer">Cancel</button>
+            <button onClick={() => {
+              if (categoryModalApp && categoryInputValue.trim()) { setAppCategories(prev => ({ ...prev, [categoryModalApp]: categoryInputValue.trim() })); showToast('Category Updated', `${categoryModalApp} is now categorized as ${categoryInputValue.trim()}.`); }
+              setCategoryModalApp(null);
+            }} className="px-5 py-2.5 rounded-xl text-sm font-bold bg-[rgb(var(--a1))] text-[var(--bg)] hover:brightness-125 shadow-[0_0_15px_rgba(var(--a1),0.4)] transition-all cursor-pointer">Save Category</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Modal */}
       <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
@@ -1927,6 +2011,26 @@ const App: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Level Up Notification Blast Overlay */}
+      {showLevelUp && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-none transition-opacity duration-500">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[rgb(var(--a1))]/20 to-[rgb(var(--a2))]/20 mix-blend-overlay animate-pulse"></div>
+          <div className="flex flex-col items-center animate-in zoom-in-75 fade-in duration-500 ease-out drop-shadow-2xl">
+            <Flame className="w-24 h-24 sm:w-32 sm:h-32 text-orange-400 drop-shadow-[0_0_40px_rgba(249,115,22,0.8)] animate-bounce mb-4" />
+            <h1 className="text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-orange-300 to-orange-600 drop-shadow-[0_4px_20px_rgba(249,115,22,0.8)] mb-4 tracking-tighter uppercase font-['Acorn',_sans-serif]">
+              LEVEL UP!
+            </h1>
+            <div className="bg-[var(--panel-bg)]/90 backdrop-blur-md border border-[var(--panel-border)] px-8 py-3 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4">
+              <span className="text-xl sm:text-2xl font-black text-[var(--text)] tracking-widest uppercase">{showLevelUp.title}</span>
+              <div className="w-2 h-2 rounded-full bg-[rgb(var(--a1))]"></div>
+              <span className={`text-xl sm:text-2xl font-black uppercase tracking-widest ${getStreakRank(parseInt(localStorage.getItem('lastNotifiedStreak')||'0', 10)).color}`}>
+                {showLevelUp.rank} Rank
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .stagger-item {

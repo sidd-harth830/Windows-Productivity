@@ -6,9 +6,10 @@ interface ContextMenuProps {
   onRefreshIcon: () => void;
   onHideApp: () => void;
   onOpenLocation: () => void;
+  onOpenCategory: () => void;
 }
 
-const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefreshIcon, onHideApp, onOpenLocation }) => {
+const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefreshIcon, onHideApp, onOpenLocation, onOpenCategory }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,6 +32,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose, onRefre
       </button>
       <button onClick={onRefreshIcon} className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] rounded-lg transition-colors cursor-pointer text-left">
         Refresh App Icon
+      </button>
+      <button onClick={onOpenCategory} className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-[var(--text)] hover:bg-[rgba(var(--a1),0.15)] rounded-lg transition-colors cursor-pointer text-left">
+        Change Category
       </button>
       <button onClick={onHideApp} className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer text-left mt-1 border-t border-[var(--panel-border)] pt-2">
         Hide Application
