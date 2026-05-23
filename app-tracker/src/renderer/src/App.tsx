@@ -566,6 +566,7 @@ const App: React.FC = () => {
 
   const calculateProductivityScore = (data: { name: string, time: number }[]) => {
     let productiveTime = 0;
+    let distractingTime = 0;
     let totalTime = 0;
     data.forEach(app => {
       if (!isAppValid(app.name)) return;
@@ -575,14 +576,19 @@ const App: React.FC = () => {
         productiveTime += app.time;
       } else if (cat === 'Communication') {
         productiveTime += (app.time * 0.5); // Half weight
+      } else if (cat === 'Entertainment' || cat === 'Browsing') {
+        distractingTime += app.time;
       }
     });
     if (totalTime === 0) return 0;
-    return Math.round((productiveTime / totalTime) * 100);
+    const score = (productiveTime / totalTime) * 100;
+    const penalty = (distractingTime / totalTime) * 20; // Up to 20% penalty for distractions
+    return Math.max(0, Math.min(100, Math.round(score - penalty)));
   };
 
   const calculateProductivityScoreForDay = (dayData: Record<string, number>) => {
     let prodTime = 0;
+    let distTime = 0;
     let total = 0;
     Object.entries(dayData).forEach(([app, time]) => {
       if (!isAppValid(app)) return;
@@ -590,9 +596,12 @@ const App: React.FC = () => {
       const cat = categorizeApp(app);
       if (cat === 'Development' || cat === 'Productivity') prodTime += time;
       else if (cat === 'Communication') prodTime += (time * 0.5);
+      else if (cat === 'Entertainment' || cat === 'Browsing') distTime += time;
     });
     if (total === 0) return 0;
-    return Math.round((prodTime / total) * 100);
+    const score = (prodTime / total) * 100;
+    const penalty = (distTime / total) * 20;
+    return Math.max(0, Math.min(100, Math.round(score - penalty)));
   };
 
   const categoryDataMap: Record<string, { value: number; apps: { name: string; time: number }[] }> = {};
@@ -609,14 +618,14 @@ const App: React.FC = () => {
 
   const totalCategoryTime = pieData.reduce((sum, item) => sum + item.value, 0);
 
-  const heatmapDays: { dateStr: string, score: number, hasData: boolean, isFuture: boolean }[] = [];
+  const heatmapDays: { dateStr: string, score: number, hasData: boolean, isFuture: boolean, goalMet: boolean, uptime: number }[] = [];
   const currentDayOfWeek = new Date().getDay();
   const daysToPadAtEnd = 6 - currentDayOfWeek;
   const totalCells = 16 * 7; // 16 Weeks
 
   for (let i = totalCells - 1 - daysToPadAtEnd; i >= -daysToPadAtEnd; i--) {
     if (i < 0) {
-      heatmapDays.push({ dateStr: '', score: 0, hasData: false, isFuture: true });
+      heatmapDays.push({ dateStr: '', score: 0, hasData: false, isFuture: true, goalMet: false, uptime: 0 });
     } else {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -624,7 +633,16 @@ const App: React.FC = () => {
       const dayData = (dStr === todayStr && activeApp) ? activeApp.allUsage : (historyData[dStr] || {});
       const score = calculateProductivityScoreForDay(dayData);
       const hasData = Object.keys(dayData).length > 0;
-      heatmapDays.push({ dateStr: dStr, score, hasData, isFuture: false });
+      
+      const getValidUptime = (data: Record<string, number> | undefined) => {
+        if (!data) return 0;
+        return Object.entries(data).reduce((acc, [app, time]) => acc + (isAppValid(app) ? time : 0), 0);
+      };
+      const uptime = getValidUptime(dayData);
+      const goalSeconds = dailyFocusGoal * 3600;
+      const goalMet = uptime >= goalSeconds;
+
+      heatmapDays.push({ dateStr: dStr, score, hasData, isFuture: false, goalMet, uptime });
     }
   }
 
@@ -841,8 +859,8 @@ const App: React.FC = () => {
               <svg className="w-full h-full text-[rgb(var(--a1))]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
             </div>
             <div className="flex flex-col justify-center w-full">
-              <div className="flex justify-between items-end mb-1.5">
-                <span className="text-[var(--text)] opacity-50 text-xs uppercase tracking-widest font-black">Prod. Score</span>
+              <div className="flex justify-between items-end mb-1.5 cursor-help" title="Calculated from your usage efficiency minus distraction penalty">
+                <span className="text-[var(--text)] opacity-50 text-xs uppercase tracking-widest font-black">Efficiency</span>
                 <span className={`text-sm font-black ${scoreColor}`}>{prodScore}%</span>
               </div>
               <div className="w-full bg-[var(--panel-border)] rounded-full h-2.5 overflow-hidden shadow-inner">
@@ -1293,24 +1311,30 @@ const App: React.FC = () => {
                 if (day.isFuture) return <div key={`future-${idx}`} className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-transparent"></div>;
                 let level: 0 | 1 | 2 | 3 | 4 = 0;
                 if (day.hasData) {
-                  if (day.score < 25) level = 1;
-                  else if (day.score < 50) level = 2;
-                  else if (day.score < 75) level = 3;
-                  else level = 4;
+                  if (day.goalMet) {
+                    level = day.score >= 60 ? 4 : 3;
+                  } else {
+                    level = day.uptime > (dailyFocusGoal * 3600 / 2) ? 2 : 1;
+                  }
                 }
                 const colorClass = getHeatmapColor(level);
-                return <div key={day.dateStr} className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${colorClass} transition-all hover:scale-125 hover:ring-2 hover:ring-[rgb(var(--a1))] cursor-crosshair`} title={`${format(new Date(day.dateStr + "T00:00:00"), 'MMM d, yyyy')}: ${day.hasData ? day.score + '% Productivity' : 'No Data'}`}></div>
+                return <div key={day.dateStr} className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${colorClass} transition-all hover:scale-125 hover:ring-2 hover:ring-[rgb(var(--a1))] cursor-crosshair`} title={`${format(new Date(day.dateStr + "T00:00:00"), 'MMM d, yyyy')}: ${day.hasData ? `${formatTime(day.uptime)} (${day.score}% Prod) ${day.goalMet ? '🔥 Goal Met' : ''}` : 'No Data'}`}></div>
               })}
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 text-[10px] sm:text-xs text-[var(--text)] opacity-60 font-medium mt-2">
-            <span>Less</span>
-            <div className={`w-3 h-3 rounded ${getHeatmapColor(0)}`}></div>
-            <div className={`w-3 h-3 rounded ${getHeatmapColor(1)}`}></div>
-            <div className={`w-3 h-3 rounded ${getHeatmapColor(2)}`}></div>
-            <div className={`w-3 h-3 rounded ${getHeatmapColor(3)}`}></div>
-            <div className={`w-3 h-3 rounded ${getHeatmapColor(4)}`}></div>
-            <span>More</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
+            <span className="text-[10px] sm:text-xs text-[var(--text)] opacity-50 font-bold uppercase tracking-widest">
+               Intensity reflects Goal progress & Efficiency
+            </span>
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs text-[var(--text)] opacity-60 font-medium">
+              <span>Less</span>
+              <div className={`w-3 h-3 rounded ${getHeatmapColor(0)}`}></div>
+              <div className={`w-3 h-3 rounded ${getHeatmapColor(1)}`}></div>
+              <div className={`w-3 h-3 rounded ${getHeatmapColor(2)}`}></div>
+              <div className={`w-3 h-3 rounded ${getHeatmapColor(3)}`}></div>
+              <div className={`w-3 h-3 rounded ${getHeatmapColor(4)}`}></div>
+              <span>More</span>
+            </div>
           </div>
         </div>
 
