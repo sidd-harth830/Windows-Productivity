@@ -5,13 +5,18 @@
   "build": {
     "appId": "com.zeitra.app",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "resources/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "installerIcon": "resources/icon.ico",
+      "installerHeader": "resources/installerHeader.bmp",
       "installerSidebar": "resources/installerSidebar.bmp",
-      "uninstallerSidebar": "resources/uninstallerSidebar.bmp"
+      "uninstallerSidebar": "resources/uninstallerSidebar.bmp",
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
     }
   }
 }
