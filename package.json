@@ -1,5 +1,17 @@
 {
   "dependencies": {
     "lucide-react": "^1.16.0"
+  },
+  "build": {
+    "appId": "com.zeitra.app",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerSidebar": "resources/installerSidebar.bmp",
+      "uninstallerSidebar": "resources/uninstallerSidebar.bmp"
+    }
   }
 }
