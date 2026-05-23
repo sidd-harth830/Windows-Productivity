@@ -554,14 +554,16 @@ const App: React.FC = () => {
     return Math.round((prodTime / total) * 100);
   };
 
-  const categoryDataMap: Record<string, number> = {};
+  const categoryDataMap: Record<string, { value: number; apps: { name: string; time: number }[] }> = {};
   analyticsChartData.forEach(app => {
     const cat = categorizeApp(app.name);
-    categoryDataMap[cat] = (categoryDataMap[cat] || 0) + app.time;
+    if (!categoryDataMap[cat]) categoryDataMap[cat] = { value: 0, apps: [] };
+    categoryDataMap[cat].value += app.time;
+    categoryDataMap[cat].apps.push({ name: app.name, time: app.time });
   });
 
   const pieData = Object.entries(categoryDataMap)
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, data]) => ({ name, value: data.value, apps: data.apps.sort((a, b) => b.time - a.time) }))
     .sort((a, b) => b.value - a.value);
 
   const totalCategoryTime = pieData.reduce((sum, item) => sum + item.value, 0);
@@ -1295,12 +1297,29 @@ const App: React.FC = () => {
                                 const percent = totalCategoryTime > 0
                                   ? ((payload[0].value / totalCategoryTime) * 100).toFixed(1)
                                   : '0.0';
+                              const data = payload[0].payload;
                                 return (
-                                  <div className="bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-3 rounded-xl shadow-2xl z-50">
-                                    <p className="text-[var(--text)] font-bold mb-1 text-sm tracking-wide">{payload[0].name}</p>
-                                    <p className="text-[rgb(var(--a2))] font-black text-xs tracking-widest">
-                                      {formatTime(payload[0].value)} <span className="text-[var(--text)] opacity-60 ml-1">({percent}%)</span>
+                                <div className="bg-[var(--bg)]/95 backdrop-blur-3xl border border-[var(--panel-border)] p-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 min-w-[200px]">
+                                  <div className="flex justify-between items-center mb-2 pb-2 border-b border-[var(--panel-border)]">
+                                    <p className="text-[var(--text)] font-bold text-sm tracking-wide">{data.name}</p>
+                                    <p className="text-[rgb(var(--a2))] font-black text-[10px] tracking-widest bg-[rgba(var(--a2),0.1)] border border-[rgba(var(--a2),0.2)] px-2 py-0.5 rounded">
+                                      {percent}%
                                     </p>
+                                  </div>
+                                  <p className="text-[var(--text)] opacity-60 font-medium text-[10px] tracking-widest uppercase mb-3">Total Time: <span className="text-[var(--text)] font-bold opacity-100 ml-1">{formatTime(data.value)}</span></p>
+                                  <div className="flex flex-col gap-1.5">
+                                    {data.apps.slice(0, 4).map((app: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between items-center text-xs gap-4">
+                                        <span className="text-[var(--text)] font-bold truncate max-w-[130px] opacity-90">{app.name}</span>
+                                        <span className="text-[var(--text)] opacity-50 font-medium whitespace-nowrap">{formatTime(app.time)}</span>
+                                      </div>
+                                    ))}
+                                    {data.apps.length > 4 && (
+                                      <p className="text-[var(--text)] opacity-40 text-[10px] font-bold mt-1 text-center italic">
+                                        + {data.apps.length - 4} more
+                                      </p>
+                                    )}
+                                  </div>
                                   </div>
                                 );
                               }
