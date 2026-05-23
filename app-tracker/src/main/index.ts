@@ -31,7 +31,6 @@ let focusTimerInterval: NodeJS.Timeout | null = null;
 let focusActive = false;
 let focusTimeLeft = 0;
 let focusTotalDuration = 0;
-let miniPlayerWin: BrowserWindow | null = null;
 let todayStr = new Date().toISOString().split('T')[0];
 
 // --- 1. Database Initialization ---
@@ -65,7 +64,7 @@ function updateTrayMenu() {
     },
     { type: 'separator' },
     { label: 'Show Dashboard', click: () => {
-        const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
+        const wins = BrowserWindow.getAllWindows();
         if (wins.length > 0) wins[0].show();
     } },
     { label: 'Quit Zeitra', click: () => { isQuitting = true; app.quit(); } }
@@ -151,28 +150,9 @@ ipcMain.on('close-window', (event) => {
   if (win) win.close(); // Triggers the 'close' event which hides it cleanly
 });
 
-ipcMain.on('toggle-always-on-top', (_event, isAlwaysOnTop: boolean) => {
-  if (miniPlayerWin) miniPlayerWin.setAlwaysOnTop(isAlwaysOnTop);
-});
-
-// Mini Player Window
-ipcMain.on('open-mini-player', () => {
-  if (miniPlayerWin) { miniPlayerWin.focus(); return; }
-  miniPlayerWin = createMiniPlayerWindow();
-
-  // Hide main window when opening mini player
-  const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
-  if (wins.length > 0) wins[0].hide();
-});
-
-ipcMain.on('close-mini-player', () => {
-  if (miniPlayerWin) miniPlayerWin.close();
-});
-
-ipcMain.on('restore-main-window', () => {
-  const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
-  if (wins.length > 0) wins[0].show();
-  if (miniPlayerWin) miniPlayerWin.close();
+ipcMain.on('toggle-always-on-top', (event, isAlwaysOnTop: boolean) => {
+  const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
+  if (win) win.setAlwaysOnTop(isAlwaysOnTop);
 });
 
 ipcMain.on('show-notification', (_event, title: string, body: string) => {
@@ -453,20 +433,6 @@ function createWindow(): BrowserWindow {
   return mainWindow;
 }
 
-function createMiniPlayerWindow(): BrowserWindow {
-  const win = new BrowserWindow({
-    width: 280, height: 210, resizable: false, // Increased bounds for proper drop-shadow padding
-    alwaysOnTop: true, frame: false, transparent: true,
-    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: false }
-  });
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) { win.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#mini'); } 
-  else { win.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'mini' }); }
-  
-  win.on('closed', () => miniPlayerWin = null);
-  return win;
-}
-
 // --- 5. Boot Sequence ---
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.electron');
@@ -517,7 +483,7 @@ app.whenReady().then(() => {
   updateTrayMenu();
   tray.setToolTip('Zeitra - Tracking Active');
   tray.on('double-click', () => {
-    const wins = BrowserWindow.getAllWindows().filter(w => w !== miniPlayerWin);
+    const wins = BrowserWindow.getAllWindows();
     if (wins.length > 0) wins[0].show();
   });
 

@@ -23,7 +23,7 @@ const MinusIcon = ({ className }: { className?: string }) => <svg xmlns="http://
 
 const App: React.FC = () => {
   // 1. All hooks declared cleanly at the top!
-  const isMiniPlayer = window.location.hash === '#mini';
+  const [isMiniPlayer, setIsMiniPlayer] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'controls' | 'settings' | 'analytics'>('dashboard');
   const [activeApp, setActiveApp] = useState<WindowData | null>(null);
   const [lastActiveValidApp, setLastActiveValidApp] = useState<string | null>(null);
@@ -80,12 +80,8 @@ const App: React.FC = () => {
     const root = window.document.documentElement;
 
     root.classList.remove('light', 'dark');
-    if (isMiniPlayer) {
-      root.classList.add(miniPlayerThemePref === 'sync' ? effectiveTheme : miniPlayerThemePref);
-    } else {
-      root.classList.add(effectiveTheme);
-    }
-  }, [themePref, systemTheme, miniPlayerThemePref, isMiniPlayer]);
+    root.classList.add(effectiveTheme);
+  }, [themePref, systemTheme, miniPlayerThemePref]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -843,11 +839,10 @@ const App: React.FC = () => {
               </div>
               <button
                 onClick={() => {
-                  if ((window as any).electron) (window as any).electron.ipcRenderer.send('open-mini-player');
-                  else if ((window as any).api && (window as any).api.openMiniPlayer) (window as any).api.openMiniPlayer();
+                  setIsMiniPlayer(true);
                 }}
                 className="p-2 bg-[var(--bg)] border border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.1)] hover:border-[rgb(var(--a1))] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-all rounded-xl shadow-inner"
-                title="Open Mini Player"
+                title="Open Focus Player"
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
@@ -1637,99 +1632,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  // Special Route strictly for the frameless Mini Player window
-
-  // Force the underlying document to be 100% transparent to support perfectly rounded corners
-  useEffect(() => {
-    if (isMiniPlayer) {
-      document.body.style.background = 'transparent';
-      document.documentElement.style.background = 'transparent';
-    } else {
-      document.body.style.background = '';
-      document.documentElement.style.background = '';
-    }
-  }, [isMiniPlayer]);
-
-  if (isMiniPlayer) {
-    return (
-      <div className="w-screen h-screen bg-transparent p-3 flex items-center justify-center font-sans overflow-hidden [-webkit-app-region:drag]">
-        <div className="w-full h-full flex flex-col justify-between bg-[var(--panel-bg)]/50 backdrop-blur-[24px] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-4 group transition-all duration-300 hover:shadow-[0_15px_40px_rgba(0,0,0,0.6)]">
-          
-          <div className="flex items-center justify-between w-full z-50">
-            <button 
-              onClick={() => {
-                const newState = !isMiniPlayerAlwaysOnTop;
-                setIsMiniPlayerAlwaysOnTop(newState);
-                if ((window as any).electron) (window as any).electron.ipcRenderer.send('toggle-always-on-top', newState);
-                else if ((window as any).api && (window as any).api.toggleAlwaysOnTop) (window as any).api.toggleAlwaysOnTop(newState);
-              }} 
-              className={`p-1.5 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border shadow-sm flex items-center justify-center ${isMiniPlayerAlwaysOnTop ? 'bg-[rgb(var(--a1))] text-[var(--bg)] border-[rgb(var(--a1))] shadow-[0_0_10px_rgba(var(--a1),0.4)]' : 'bg-[var(--bg)]/50 text-[var(--text)] hover:text-[rgb(var(--a1))] border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.2)]'}`}
-              title={isMiniPlayerAlwaysOnTop ? "Always on Top: ON" : "Always on Top: OFF"}
-            >
-              {isMiniPlayerAlwaysOnTop ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
-            </button>
-
-            <div className="flex items-center gap-1.5 bg-[var(--bg)]/50 backdrop-blur-md px-3 py-1 rounded-full border border-[var(--panel-border)] shadow-inner">
-              <Flame className={`w-3.5 h-3.5 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]' : 'opacity-40'}`} />
-              <span className="font-bold text-[10px] tracking-widest uppercase opacity-80">Focus</span>
-            </div>
-
-            <button 
-              onClick={() => {
-                if ((window as any).electron) (window as any).electron.ipcRenderer.send('restore-main-window');
-                else if ((window as any).api && (window as any).api.restoreMainWindow) (window as any).api.restoreMainWindow();
-              }} 
-              className="p-1.5 bg-[var(--bg)]/50 hover:bg-red-500/20 text-[var(--text)] hover:text-red-500 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border border-[var(--panel-border)] shadow-sm flex items-center justify-center"
-              title="Return to Dashboard"
-            >
-              <X className="w-3.5 h-3.5" strokeWidth={2.5} />
-            </button>
-          </div>
-
-          <div className="flex flex-col items-center justify-center flex-1 relative min-h-0 py-2">
-            <div className="relative flex flex-col items-center justify-center w-[130px] h-[130px]">
-              {focusSessionActive && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <svg className="w-full h-full -rotate-90 drop-shadow-[0_0_15px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="46" stroke="var(--panel-border)" strokeWidth="2" fill="transparent" />
-                    <circle cx="50" cy="50" r="46" stroke="rgb(var(--a1))" strokeWidth="4" fill="transparent" strokeDasharray="289.02" strokeDashoffset={289.02 - (focusSessionTimeLeft / (focusSessionMinutes * 60) * 289.02)} className="transition-all duration-1000 linear" strokeLinecap="round" />
-                  </svg>
-                </div>
-              )}
-              <span className="text-4xl leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10">
-                {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
-              </span>
-            </div>
-            
-            {!focusSessionActive && (
-              <div className="flex items-center gap-3 mt-3 [-webkit-app-region:no-drag] z-20">
-                <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">-</button>
-                <span className="text-[var(--text)] opacity-50 text-[10px] font-black tracking-widest uppercase">MIN</span>
-                <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">+</button>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={toggleFocusSession}
-            className={`[-webkit-app-region:no-drag] w-full py-2.5 rounded-2xl text-[11px] font-black tracking-widest transition-all duration-300 cursor-pointer shadow-lg flex items-center justify-center gap-2 z-50 ${
-              focusSessionActive 
-                ? 'bg-[var(--bg)]/80 backdrop-blur-md border border-[var(--panel-border)] text-red-400 hover:bg-red-500/20 hover:border-red-500/40 shadow-[0_5px_15px_rgba(239,68,68,0.15)]' 
-                : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] border-transparent text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-110 hover:shadow-[0_0_25px_rgba(var(--a1),0.5)]'
-            }`}
-          >
-            {focusSessionActive ? (
-              <><Square className="w-3.5 h-3.5" strokeWidth={3} /> STOP FOCUS</>
-            ) : (
-              <><Play className="w-3.5 h-3.5 fill-current" /> START FOCUS</>
-            )}
-          </button>
-
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="h-screen flex flex-col overflow-hidden relative font-sans transition-colors duration-500 bg-[var(--bg)] text-[var(--text)] rounded-xl border border-[var(--panel-border)] shadow-2xl">
@@ -1916,6 +1818,81 @@ const App: React.FC = () => {
         )}
         </main>
       </div>
+
+      {/* Mini Player Internal Overlay */}
+      {isMiniPlayer && (
+        <div className="absolute inset-0 z-[200] bg-[var(--bg)]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+          <div className="w-[320px] h-[240px] flex flex-col justify-between bg-[var(--panel-bg)]/80 backdrop-blur-[24px] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_20px_60px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-5 group transition-all duration-300">
+            
+            <div className="flex items-center justify-between w-full z-50">
+              <button 
+                onClick={() => {
+                  const newState = !isMiniPlayerAlwaysOnTop;
+                  setIsMiniPlayerAlwaysOnTop(newState);
+                  if ((window as any).electron) (window as any).electron.ipcRenderer.send('toggle-always-on-top', newState);
+                  else if ((window as any).api && (window as any).api.toggleAlwaysOnTop) (window as any).api.toggleAlwaysOnTop(newState);
+                }} 
+                className={`p-1.5 rounded-full cursor-pointer transition-all border shadow-sm flex items-center justify-center ${isMiniPlayerAlwaysOnTop ? 'bg-[rgb(var(--a1))] text-[var(--bg)] border-[rgb(var(--a1))] shadow-[0_0_10px_rgba(var(--a1),0.4)]' : 'bg-[var(--bg)]/50 text-[var(--text)] hover:text-[rgb(var(--a1))] border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.2)]'}`}
+                title={isMiniPlayerAlwaysOnTop ? "Always on Top: ON" : "Always on Top: OFF"}
+              >
+                {isMiniPlayerAlwaysOnTop ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
+              </button>
+
+              <div className="flex items-center gap-1.5 bg-[var(--bg)]/50 backdrop-blur-md px-3 py-1 rounded-full border border-[var(--panel-border)] shadow-inner">
+                <Flame className={`w-3.5 h-3.5 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]' : 'opacity-40'}`} />
+                <span className="font-bold text-[10px] tracking-widest uppercase opacity-80">Focus</span>
+              </div>
+
+              <button 
+                onClick={() => setIsMiniPlayer(false)} 
+                className="p-1.5 bg-[var(--bg)]/50 hover:bg-red-500/20 text-[var(--text)] hover:text-red-500 rounded-full cursor-pointer transition-all border border-[var(--panel-border)] shadow-sm flex items-center justify-center"
+                title="Close Focus Player"
+              >
+                <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center justify-center flex-1 relative min-h-0 py-2">
+              <div className="relative flex flex-col items-center justify-center w-[130px] h-[130px]">
+                {focusSessionActive && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <svg className="w-full h-full -rotate-90 drop-shadow-[0_0_15px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="46" stroke="var(--panel-border)" strokeWidth="2" fill="transparent" />
+                      <circle cx="50" cy="50" r="46" stroke="rgb(var(--a1))" strokeWidth="4" fill="transparent" strokeDasharray="289.02" strokeDashoffset={289.02 - (focusSessionTimeLeft / (focusSessionMinutes * 60) * 289.02)} className="transition-all duration-1000 linear" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                )}
+                <span className="text-4xl leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10">
+                  {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
+                </span>
+              </div>
+              
+              {!focusSessionActive && (
+                <div className="flex items-center gap-3 mt-3 z-20">
+                  <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">-</button>
+                  <span className="text-[var(--text)] opacity-50 text-[10px] font-black tracking-widest uppercase">MIN</span>
+                  <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">+</button>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={toggleFocusSession}
+              className={`w-full py-2.5 rounded-2xl text-[11px] font-black tracking-widest transition-all duration-300 cursor-pointer shadow-lg flex items-center justify-center gap-2 z-50 ${
+                focusSessionActive 
+                  ? 'bg-[var(--bg)]/80 backdrop-blur-md border border-[var(--panel-border)] text-red-400 hover:bg-red-500/20 hover:border-red-500/40 shadow-[0_5px_15px_rgba(239,68,68,0.15)]' 
+                  : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] border-transparent text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-110 hover:shadow-[0_0_25px_rgba(var(--a1),0.5)]'
+              }`}
+            >
+              {focusSessionActive ? (
+                <><Square className="w-3.5 h-3.5" strokeWidth={3} /> STOP FOCUS</>
+              ) : (
+                <><Play className="w-3.5 h-3.5 fill-current" /> START FOCUS</>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Shadcn Sonner Toaster */}
       <Toaster theme={effectiveTheme as any} toastOptions={{ style: { background: 'var(--panel-bg)', color: 'var(--text)', border: '1px solid var(--panel-border)', backdropFilter: 'blur(20px)' }, className: 'font-sans font-medium' }} />
