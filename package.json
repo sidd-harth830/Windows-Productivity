@@ -6,8 +6,8 @@
     "appId": "com.zeitra.app",
     "publish": {
       "provider": "github",
-      "owner": "YOUR_GITHUB_USERNAME",
-      "repo": "YOUR_REPOSITORY_NAME"
+      "owner": "sidd-harth830",
+      "repo": "Windows-Productivity"
     },
     "win": {
       "target": [
