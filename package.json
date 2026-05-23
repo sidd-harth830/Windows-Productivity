@@ -5,8 +5,12 @@
   "build": {
     "appId": "com.zeitra.app",
     "win": {
-      "target": "nsis",
-      "icon": "resources/icon.ico"
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.ico",
+      "publisherName": "Your Company Name"
     },
     "nsis": {
       "oneClick": false,
@@ -17,6 +21,9 @@
       "uninstallerSidebar": "resources/uninstallerSidebar.bmp",
       "createDesktopShortcut": true,
       "runAfterFinish": true
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
   }
 }
