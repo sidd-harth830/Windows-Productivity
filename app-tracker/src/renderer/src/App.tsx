@@ -532,19 +532,6 @@ const App: React.FC = () => {
     );
   }, [activeApp, lastActiveValidApp, hiddenApps]);
 
-  const CustomXAxisTick = useCallback(({ x, y, payload }: any) => {
-    const val = payload?.value || '';
-    const isIgnored = hiddenApps.includes(val);
-    const text = val.length > 12 ? val.substring(0, 12) + '...' : val;
-    return (
-      <g transform={`translate(${x},${y})`} className="cursor-default">
-        <text x={0} y={0} dy={16} textAnchor="middle" fill={isIgnored ? "var(--panel-border)" : "var(--text)"} opacity={isIgnored ? "0.4" : "0.6"} fontSize="12" fontWeight="bold" textDecoration={isIgnored ? "line-through" : "none"}>
-          {text}
-        </text>
-      </g>
-    );
-  }, [hiddenApps]);
-
   const TrendTooltip = useCallback(({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -903,7 +890,6 @@ const App: React.FC = () => {
     const prodScore = calculateProductivityScore(dashboardData);
     const scoreColor = prodScore >= 75 ? 'text-emerald-400' : prodScore >= 40 ? 'text-[rgb(var(--a1))]' : 'text-amber-400';
     const goalSeconds = dailyFocusGoal * 3600;
-    const progress = Math.min(1, totalTodayUptime / goalSeconds);
 
     return (
       <div ref={dashboardRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
@@ -1484,6 +1470,7 @@ const App: React.FC = () => {
                         <PieChart>
                           <Pie 
                             data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none"
+                            // @ts-ignore - Recharts activeIndex type mismatch
                             activeIndex={hoveredCategory ? pieData.findIndex(d => d.name === hoveredCategory) : undefined}
                             activeShape={PieActiveShape}
                           >
