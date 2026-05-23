@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [showLevelUp, setShowLevelUp] = useState<{rank: string, title: string} | null>(null);
   const [categoryModalApp, setCategoryModalApp] = useState<string | null>(null);
   const [categoryInputValue, setCategoryInputValue] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
   const [logoClicks, setLogoClicks] = useState<number>(0);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
@@ -1040,6 +1041,7 @@ const App: React.FC = () => {
         
         for (const [appName, time] of Object.entries(hourData)) {
           if (isAppValid(appName)) {
+            if (selectedCategory && categorizeApp(appName) !== selectedCategory) continue;
             totalTime += time;
             if (time > topApp.time) {
               topApp = { name: appName, time };
@@ -1072,6 +1074,7 @@ const App: React.FC = () => {
         
         for (const [appName, time] of Object.entries(dayData)) {
           if (isAppValid(appName)) {
+            if (selectedCategory && categorizeApp(appName) !== selectedCategory) continue;
             totalTime += time;
             if (time > topApp.time) {
               topApp = { name: appName, time };
@@ -1127,7 +1130,10 @@ const App: React.FC = () => {
       );
     };
 
-    const filteredAnalyticsApps = analyticsChartData.filter(app => app.name.toLowerCase().includes(analyticsSearch.toLowerCase()));
+    const filteredAnalyticsApps = analyticsChartData.filter(app => {
+      if (selectedCategory && categorizeApp(app.name) !== selectedCategory) return false;
+      return app.name.toLowerCase().includes(analyticsSearch.toLowerCase());
+    });
 
     const getInsight = () => {
       if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";
@@ -1248,7 +1254,19 @@ const App: React.FC = () => {
         </div>
 
         <div className="stagger-item bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex-1 flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[300px] sm:min-h-[350px]" style={{ animationDelay: '0.15s' }}>
-          <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] mb-4 sm:mb-6 tracking-wide">Screen Time Trends</h2>
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide">
+              {selectedCategory ? `${selectedCategory} Trends` : 'Screen Time Trends'}
+            </h2>
+            {selectedCategory && (
+              <button 
+                onClick={() => setSelectedCategory(null)} 
+                className="text-[10px] sm:text-xs font-bold bg-[var(--panel-border)] px-2 py-1 rounded-md text-[var(--text)] opacity-70 hover:opacity-100 transition-all uppercase tracking-widest cursor-pointer"
+              >
+                Clear Filter
+              </button>
+            )}
+          </div>
           <div className="flex-1 w-full min-h-[250px] min-w-0 relative">
             {trendData.length > 0 ? (
               <div className="absolute inset-0">
@@ -1392,7 +1410,8 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="lg:col-span-4 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 rounded-2xl lg:rounded-3xl shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col min-h-[250px]">
-            <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide mb-4 text-center">Category Breakdown</h3>
+            <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide mb-1 text-center">Category Breakdown</h3>
+            <p className="text-[10px] sm:text-xs text-[var(--text)] opacity-50 text-center mb-4 font-medium uppercase tracking-widest">Click a slice to filter</p>
             <div className="flex-1 w-full min-h-[180px] relative">
               {pieData.length > 0 ? (
                 <div className="flex-1 w-full h-full flex flex-col">
@@ -1402,7 +1421,13 @@ const App: React.FC = () => {
                         <PieChart>
                           <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
                             {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={PIE_COLORS[index % PIE_COLORS.length]} 
+                                onClick={() => setSelectedCategory(prev => prev === entry.name ? null : entry.name)}
+                                className="cursor-pointer outline-none transition-opacity duration-300 hover:opacity-80"
+                                style={{ opacity: selectedCategory ? (selectedCategory === entry.name ? 1 : 0.3) : 1 }}
+                              />
                             ))}
                           </Pie>
                           <Tooltip
@@ -1446,7 +1471,11 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-4 shrink-0">
                     {pieData.map((entry, index) => (
-                      <div key={entry.name} className="flex items-center gap-1.5">
+                      <div 
+                        key={entry.name} 
+                        className={`flex items-center gap-1.5 cursor-pointer transition-opacity ${selectedCategory && selectedCategory !== entry.name ? 'opacity-40' : 'opacity-100 hover:opacity-80'}`}
+                        onClick={() => setSelectedCategory(prev => prev === entry.name ? null : entry.name)}
+                      >
                         <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
                         <span className="text-[var(--text)] text-xs font-bold opacity-70">{entry.name}</span>
                       </div>
