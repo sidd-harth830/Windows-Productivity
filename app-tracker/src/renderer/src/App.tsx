@@ -1951,6 +1951,22 @@ const App: React.FC = () => {
         .custom-date-picker::-webkit-calendar-picker-indicator:hover {
           opacity: 1;
         }
+        
+        /* Premium Timeline Brush Handle Styling */
+        .recharts-brush-traveller rect {
+          fill: rgb(var(--a1)) !important;
+          filter: drop-shadow(0 0 8px rgba(var(--a1), 0.6));
+          rx: 4px;
+          transition: all 0.3s ease;
+        }
+        .recharts-brush-traveller:hover rect {
+          fill: rgb(var(--a2)) !important;
+          filter: drop-shadow(0 0 12px rgba(var(--a2), 0.9));
+        }
+        .recharts-brush-traveller line {
+          stroke: var(--bg) !important;
+          stroke-width: 1.5px !important;
+        }
       `}</style>
 
     </div>
