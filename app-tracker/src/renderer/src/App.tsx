@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie, Brush } from 'recharts'
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
@@ -1144,7 +1144,7 @@ const App: React.FC = () => {
             {trendData.length > 0 ? (
               <div className="absolute inset-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 15, bottom: 0 }}>
+                  <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 15, bottom: 10 }}>
                     <defs>
                       <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="rgb(var(--a1))" stopOpacity={0.6} />
@@ -1169,6 +1169,13 @@ const App: React.FC = () => {
                       animationDuration={1200}
                       animationEasing="ease-out"
                       activeDot={{ r: 7, fill: 'rgb(var(--a2))', stroke: '#fff', strokeWidth: 2 }}
+                    />
+                    <Brush 
+                      dataKey="label" 
+                      height={30} 
+                      stroke="rgb(var(--a1))" 
+                      fill="var(--panel-bg)" 
+                      travellerWidth={10}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -1619,7 +1626,7 @@ const App: React.FC = () => {
   if (isMiniPlayer) {
     return (
       <div className="w-screen h-screen bg-transparent p-3 flex items-center justify-center font-sans overflow-hidden [-webkit-app-region:drag]">
-        <div className="w-full h-full flex flex-col justify-between bg-[var(--panel-bg)] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_15px_40px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] rounded-3xl overflow-hidden p-3 group">
+        <div className="w-full h-full flex flex-col justify-between bg-[var(--panel-bg)]/60 backdrop-blur-3xl text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-4 group transition-all duration-300 hover:shadow-[0_15px_40px_rgba(0,0,0,0.6)]">
           
           <div className="flex items-center justify-between w-full z-50">
             <button 
@@ -1629,63 +1636,63 @@ const App: React.FC = () => {
                 if ((window as any).electron) (window as any).electron.ipcRenderer.send('toggle-always-on-top', newState);
                 else if ((window as any).api && (window as any).api.toggleAlwaysOnTop) (window as any).api.toggleAlwaysOnTop(newState);
               }} 
-              className={`p-1.5 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border shadow-sm ${isMiniPlayerAlwaysOnTop ? 'bg-[rgb(var(--a1))] text-[var(--bg)] border-transparent' : 'bg-[var(--bg)] text-[var(--text)] hover:text-[rgb(var(--a1))] border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.2)]'}`}
+              className={`p-1.5 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border shadow-sm flex items-center justify-center ${isMiniPlayerAlwaysOnTop ? 'bg-[rgb(var(--a1))] text-[var(--bg)] border-[rgb(var(--a1))] shadow-[0_0_10px_rgba(var(--a1),0.4)]' : 'bg-[var(--bg)]/50 text-[var(--text)] hover:text-[rgb(var(--a1))] border-[var(--panel-border)] hover:bg-[rgba(var(--a1),0.2)]'}`}
               title={isMiniPlayerAlwaysOnTop ? "Always on Top: ON" : "Always on Top: OFF"}
             >
-              {isMiniPlayerAlwaysOnTop ? <Pin className="w-3 h-3" /> : <PinOff className="w-3 h-3" />}
+              {isMiniPlayerAlwaysOnTop ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
             </button>
 
-            <div className="flex items-center gap-1 bg-[var(--bg)] px-2.5 py-1 rounded-full border border-[var(--panel-border)] shadow-inner">
-              <Flame className={`w-3 h-3 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]' : 'opacity-40'}`} />
-              <span className="font-bold text-[9px] tracking-widest uppercase opacity-70">Focus</span>
+            <div className="flex items-center gap-1.5 bg-[var(--bg)]/50 backdrop-blur-md px-3 py-1 rounded-full border border-[var(--panel-border)] shadow-inner">
+              <Flame className={`w-3.5 h-3.5 ${focusSessionActive ? 'text-[rgb(var(--a1))] animate-pulse drop-shadow-[0_0_8px_rgba(var(--a1),0.5)]' : 'opacity-40'}`} />
+              <span className="font-bold text-[10px] tracking-widest uppercase opacity-80">Focus</span>
             </div>
 
             <button 
               onClick={() => {
-                if ((window as any).electron) (window as any).electron.ipcRenderer.send('close-mini-player');
-                else if ((window as any).api && (window as any).api.closeMiniPlayer) (window as any).api.closeMiniPlayer();
+                if ((window as any).electron) (window as any).electron.ipcRenderer.send('restore-main-window');
+                else if ((window as any).api && (window as any).api.restoreMainWindow) (window as any).api.restoreMainWindow();
               }} 
-              className="p-1.5 bg-[var(--bg)] hover:bg-red-500/20 text-[var(--text)] hover:text-red-500 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border border-[var(--panel-border)] shadow-sm"
-              title="Close Mini Player"
+              className="p-1.5 bg-[var(--bg)]/50 hover:bg-red-500/20 text-[var(--text)] hover:text-red-500 rounded-full [-webkit-app-region:no-drag] cursor-pointer transition-all border border-[var(--panel-border)] shadow-sm flex items-center justify-center"
+              title="Return to Dashboard"
             >
-              <X className="w-3 h-3" strokeWidth={2.5} />
+              <X className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
           </div>
 
-          <div className="flex flex-col items-center justify-center flex-1 relative min-h-0">
+          <div className="flex flex-col items-center justify-center flex-1 relative min-h-0 py-1">
             {focusSessionActive && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <svg className="w-[120px] h-[120px] -rotate-90 drop-shadow-[0_0_12px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="44" stroke="var(--panel-border)" strokeWidth="1.5" fill="transparent" />
+                <svg className="w-[125px] h-[125px] -rotate-90 drop-shadow-[0_0_15px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="44" stroke="var(--panel-border)" strokeWidth="2" fill="transparent" />
                   <circle cx="50" cy="50" r="44" stroke="rgb(var(--a1))" strokeWidth="4" fill="transparent" strokeDasharray="276.46" strokeDashoffset={276.46 - (focusSessionTimeLeft / (focusSessionMinutes * 60) * 276.46)} className="transition-all duration-1000 linear" strokeLinecap="round" />
                 </svg>
               </div>
             )}
-            <span className="text-4xl leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10 mt-1">
+            <span className="text-[2.5rem] leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10 mt-1">
               {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
             </span>
             
             {!focusSessionActive && (
-              <div className="flex items-center gap-3 mt-1 [-webkit-app-region:no-drag]">
-                <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="text-[var(--text)] opacity-40 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-colors font-bold text-lg px-2 cursor-pointer">-</button>
-                <span className="text-[var(--text)] opacity-30 text-[9px] font-black tracking-widest uppercase">MIN</span>
-                <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="text-[var(--text)] opacity-40 hover:opacity-100 hover:text-[rgb(var(--a1))] transition-colors font-bold text-lg px-2 cursor-pointer">+</button>
+              <div className="flex items-center gap-3 mt-2 [-webkit-app-region:no-drag]">
+                <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">-</button>
+                <span className="text-[var(--text)] opacity-50 text-[10px] font-black tracking-widest uppercase">MIN</span>
+                <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">+</button>
               </div>
             )}
           </div>
 
           <button
             onClick={toggleFocusSession}
-            className={`[-webkit-app-region:no-drag] w-full py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all duration-300 cursor-pointer shadow-lg flex items-center justify-center gap-2 z-50 mt-1 ${
+            className={`[-webkit-app-region:no-drag] w-full py-2.5 rounded-2xl text-[11px] font-black tracking-widest transition-all duration-300 cursor-pointer shadow-lg flex items-center justify-center gap-2 z-50 ${
               focusSessionActive 
-                ? 'bg-[var(--bg)] border border-[var(--panel-border)] text-red-400 hover:bg-red-500/10 hover:border-red-500/30' 
-                : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] border-transparent text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.3)] hover:brightness-110'
+                ? 'bg-[var(--bg)]/80 backdrop-blur-md border border-[var(--panel-border)] text-red-400 hover:bg-red-500/20 hover:border-red-500/40 shadow-[0_5px_15px_rgba(239,68,68,0.15)]' 
+                : 'bg-gradient-to-r from-[rgb(var(--a1))] to-[rgb(var(--a2))] border-transparent text-[var(--bg)] shadow-[0_0_20px_rgba(var(--a1),0.4)] hover:brightness-110 hover:shadow-[0_0_25px_rgba(var(--a1),0.5)]'
             }`}
           >
             {focusSessionActive ? (
-              <><Square className="w-3 h-3" strokeWidth={3} /> STOP</>
+              <><Square className="w-3.5 h-3.5" strokeWidth={3} /> STOP FOCUS</>
             ) : (
-              <><Play className="w-3 h-3 fill-current" /> START</>
+              <><Play className="w-3.5 h-3.5 fill-current" /> START FOCUS</>
             )}
           </button>
 
