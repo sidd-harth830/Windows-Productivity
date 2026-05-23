@@ -513,7 +513,15 @@ const App: React.FC = () => {
     );
   };
 
-  const PIE_COLORS = ['rgb(var(--a1))', 'rgb(var(--a2))', 'rgba(var(--a1), 0.7)', 'rgba(var(--a2), 0.7)', 'rgba(var(--a1), 0.4)', 'rgba(var(--a2), 0.4)'];
+  const PIE_COLORS = [
+    'rgb(var(--a1))',
+    'rgb(var(--a2))',
+    'rgba(var(--a1), 0.75)',
+    'rgba(var(--a2), 0.75)',
+    'rgba(var(--a1), 0.45)',
+    'rgba(var(--a2), 0.45)',
+    'rgba(var(--text), 0.3)'
+  ];
 
   const categorizeApp = (name: string) => {
     const n = name.toLowerCase();
@@ -1645,7 +1653,7 @@ const App: React.FC = () => {
   if (isMiniPlayer) {
     return (
       <div className="w-screen h-screen bg-transparent p-3 flex items-center justify-center font-sans overflow-hidden [-webkit-app-region:drag]">
-        <div className="w-full h-full flex flex-col justify-between bg-[var(--panel-bg)]/60 backdrop-blur-3xl text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-4 group transition-all duration-300 hover:shadow-[0_15px_40px_rgba(0,0,0,0.6)]">
+        <div className="w-full h-full flex flex-col justify-between bg-[var(--panel-bg)]/50 backdrop-blur-[24px] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-4 group transition-all duration-300 hover:shadow-[0_15px_40px_rgba(0,0,0,0.6)]">
           
           <div className="flex items-center justify-between w-full z-50">
             <button 
@@ -1678,21 +1686,23 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex flex-col items-center justify-center flex-1 relative min-h-0 py-1">
-            {focusSessionActive && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <svg className="w-[125px] h-[125px] -rotate-90 drop-shadow-[0_0_15px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="44" stroke="var(--panel-border)" strokeWidth="2" fill="transparent" />
-                  <circle cx="50" cy="50" r="44" stroke="rgb(var(--a1))" strokeWidth="4" fill="transparent" strokeDasharray="276.46" strokeDashoffset={276.46 - (focusSessionTimeLeft / (focusSessionMinutes * 60) * 276.46)} className="transition-all duration-1000 linear" strokeLinecap="round" />
-                </svg>
-              </div>
-            )}
-            <span className="text-[2.5rem] leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10 mt-1">
-              {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
-            </span>
+          <div className="flex flex-col items-center justify-center flex-1 relative min-h-0 py-2">
+            <div className="relative flex flex-col items-center justify-center w-[130px] h-[130px]">
+              {focusSessionActive && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <svg className="w-full h-full -rotate-90 drop-shadow-[0_0_15px_rgba(var(--a1),0.4)]" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="46" stroke="var(--panel-border)" strokeWidth="2" fill="transparent" />
+                    <circle cx="50" cy="50" r="46" stroke="rgb(var(--a1))" strokeWidth="4" fill="transparent" strokeDasharray="289.02" strokeDashoffset={289.02 - (focusSessionTimeLeft / (focusSessionMinutes * 60) * 289.02)} className="transition-all duration-1000 linear" strokeLinecap="round" />
+                  </svg>
+                </div>
+              )}
+              <span className="text-4xl leading-none font-black tabular-nums tracking-tighter text-[var(--text)] drop-shadow-md z-10">
+                {focusSessionActive ? formatCountdown(focusSessionTimeLeft) : formatCountdown(focusSessionMinutes * 60)}
+              </span>
+            </div>
             
             {!focusSessionActive && (
-              <div className="flex items-center gap-3 mt-2 [-webkit-app-region:no-drag]">
+              <div className="flex items-center gap-3 mt-3 [-webkit-app-region:no-drag] z-20">
                 <button onClick={() => setFocusSessionMinutes(Math.max(5, focusSessionMinutes - 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">-</button>
                 <span className="text-[var(--text)] opacity-50 text-[10px] font-black tracking-widest uppercase">MIN</span>
                 <button onClick={() => setFocusSessionMinutes(Math.min(120, focusSessionMinutes + 5))} className="w-7 h-7 flex items-center justify-center rounded-full bg-[var(--bg)]/60 border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:text-[rgb(var(--a1))] hover:border-[rgb(var(--a1))] transition-all font-bold text-lg cursor-pointer shadow-sm">+</button>
