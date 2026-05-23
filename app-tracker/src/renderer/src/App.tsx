@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react'
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie, Brush, Sector } from 'recharts'
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
@@ -783,6 +783,22 @@ const App: React.FC = () => {
     }
   };
 
+  const filteredChartData = useMemo(() => {
+    return dashboardData
+      .filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()))
+      .sort((a, b) => {
+        if (sortMode === 'duration') return b.time - a.time;
+        return a.name.localeCompare(b.name);
+      });
+  }, [dashboardData, dashboardSearch, sortMode]);
+
+  const filteredAnalyticsApps = useMemo(() => {
+    return analyticsChartData.filter(app => {
+      if (selectedCategory && categorizeApp(app.name) !== selectedCategory) return false;
+      return app.name.toLowerCase().includes(analyticsSearch.toLowerCase());
+    });
+  }, [analyticsChartData, selectedCategory, analyticsSearch, appCategories]);
+
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
@@ -793,13 +809,6 @@ const App: React.FC = () => {
     const scoreColor = prodScore >= 75 ? 'text-emerald-400' : prodScore >= 40 ? 'text-[rgb(var(--a1))]' : 'text-amber-400';
     const goalSeconds = dailyFocusGoal * 3600;
     const progress = Math.min(1, totalTodayUptime / goalSeconds);
-
-    const filteredChartData = dashboardData
-      .filter(d => d.name.toLowerCase().includes(dashboardSearch.toLowerCase()))
-      .sort((a, b) => {
-        if (sortMode === 'duration') return b.time - a.time;
-        return a.name.localeCompare(b.name);
-      });
 
     return (
       <div ref={dashboardRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
@@ -1130,11 +1139,6 @@ const App: React.FC = () => {
         </g>
       );
     };
-
-    const filteredAnalyticsApps = analyticsChartData.filter(app => {
-      if (selectedCategory && categorizeApp(app.name) !== selectedCategory) return false;
-      return app.name.toLowerCase().includes(analyticsSearch.toLowerCase());
-    });
 
     const getInsight = () => {
       if (pieData.length === 0) return "Not enough data to generate insights yet. Keep working!";

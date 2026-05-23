@@ -40,12 +40,18 @@ const saveDatabase = () => {
 // Load immediately on boot
 loadDatabase();
 
-// Debounce save logic so we don't thrash the disk every 2 seconds
-let saveTimeout: NodeJS.Timeout | null = null;
+let isDirty = false;
 const triggerSave = () => {
-  if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(saveDatabase, 5000); 
+  isDirty = true;
 };
+
+// Background scheduled task to batch disk writes efficiently
+setInterval(() => {
+  if (isDirty) {
+    saveDatabase();
+    isDirty = false;
+  }
+}, 10000);
 
 // --- Usage Data Functions ---
 export const upsertUsage = (date: string, appName: string, seconds: number) => {

@@ -336,7 +336,8 @@ async function startTracking(mainWindow: BrowserWindow) {
           }
 
           // Focus Block Logic
-          if (isFocusModeEnabled && !isUserIdle) {
+          const hasActiveRules = Object.keys(currentBlockList).length > 0;
+          if (isFocusModeEnabled && !isUserIdle && hasActiveRules) {
             let ruleToApply: 'fully_blocked' | number | null = null;
             for (const [blockedApp, rule] of Object.entries(currentBlockList)) {
               const term = blockedApp.toLowerCase();
