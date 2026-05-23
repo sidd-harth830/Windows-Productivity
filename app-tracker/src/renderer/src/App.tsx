@@ -63,6 +63,7 @@ const App: React.FC = () => {
   const [trackSystemApps, setTrackSystemApps] = useState<boolean>(() => JSON.parse(localStorage.getItem('trackSystemApps') || 'false'));
   const [themePref, setThemePref] = useState<'system' | 'light' | 'dark'>(() => (localStorage.getItem('themePref') as 'system' | 'light' | 'dark') || 'system');
   const [miniPlayerThemePref, setMiniPlayerThemePref] = useState<'sync' | 'light' | 'dark'>(() => (localStorage.getItem('miniPlayerThemePref') as 'sync' | 'light' | 'dark') || 'sync');
+  const [heatmapColorScale, setHeatmapColorScale] = useState<'theme' | 'emerald' | 'amber' | 'rose' | 'blue' | 'purple'>(() => (localStorage.getItem('heatmapColorScale') as 'theme' | 'emerald' | 'amber' | 'rose' | 'blue' | 'purple') || 'theme');
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('dark');
   const [dailyFocusGoal, setDailyFocusGoal] = useState<number>(() => parseInt(localStorage.getItem('dailyFocusGoal') || '4', 10));
   const [hiddenApps, setHiddenApps] = useState<string[]>(() => JSON.parse(localStorage.getItem('hiddenApps') || '[]'));
@@ -76,6 +77,7 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('trackSystemApps', JSON.stringify(trackSystemApps)); }, [trackSystemApps]);
   useEffect(() => { localStorage.setItem('themePref', themePref); }, [themePref]);
   useEffect(() => { localStorage.setItem('miniPlayerThemePref', miniPlayerThemePref); }, [miniPlayerThemePref]);
+  useEffect(() => { localStorage.setItem('heatmapColorScale', heatmapColorScale); }, [heatmapColorScale]);
   useEffect(() => { localStorage.setItem('dailyFocusGoal', dailyFocusGoal.toString()); }, [dailyFocusGoal]);
   useEffect(() => { localStorage.setItem('hiddenApps', JSON.stringify(hiddenApps)); }, [hiddenApps]);
   useEffect(() => { localStorage.setItem('showIgnoredApps', JSON.stringify(showIgnoredApps)); }, [showIgnoredApps]);
@@ -730,6 +732,19 @@ const App: React.FC = () => {
     }
   }, [historyData]);
 
+  const getHeatmapColor = (level: 0 | 1 | 2 | 3 | 4) => {
+    if (level === 0) return "bg-[var(--panel-border)] opacity-30";
+    switch (heatmapColorScale) {
+      case 'emerald': return level === 1 ? "bg-emerald-500/20" : level === 2 ? "bg-emerald-500/50" : level === 3 ? "bg-emerald-500/80" : "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]";
+      case 'amber': return level === 1 ? "bg-amber-500/20" : level === 2 ? "bg-amber-500/50" : level === 3 ? "bg-amber-500/80" : "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]";
+      case 'rose': return level === 1 ? "bg-rose-500/20" : level === 2 ? "bg-rose-500/50" : level === 3 ? "bg-rose-500/80" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]";
+      case 'blue': return level === 1 ? "bg-blue-500/20" : level === 2 ? "bg-blue-500/50" : level === 3 ? "bg-blue-500/80" : "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]";
+      case 'purple': return level === 1 ? "bg-purple-500/20" : level === 2 ? "bg-purple-500/50" : level === 3 ? "bg-purple-500/80" : "bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]";
+      case 'theme':
+      default: return level === 1 ? "bg-[rgba(var(--a1),0.2)]" : level === 2 ? "bg-[rgba(var(--a1),0.5)]" : level === 3 ? "bg-[rgba(var(--a1),0.8)]" : "bg-[rgb(var(--a1))] shadow-[0_0_8px_rgba(var(--a1),0.4)]";
+    }
+  };
+
   const renderDashboard = () => {
     const mostUsedApp = dashboardData.length > 0 ? dashboardData[0] : null;
     const displayAppName = mostUsedApp ? mostUsedApp.name : "Waiting for data...";
@@ -1258,24 +1273,25 @@ const App: React.FC = () => {
             <div className="grid grid-rows-7 grid-flow-col gap-1 sm:gap-1.5 flex-1 min-w-max pb-1">
               {heatmapDays.map((day, idx) => {
                 if (day.isFuture) return <div key={`future-${idx}`} className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-transparent"></div>;
-                let colorClass = "bg-[var(--panel-border)] opacity-30";
+                let level: 0 | 1 | 2 | 3 | 4 = 0;
                 if (day.hasData) {
-                  if (day.score < 25) colorClass = "bg-[rgba(var(--a1),0.2)]";
-                  else if (day.score < 50) colorClass = "bg-[rgba(var(--a1),0.5)]";
-                  else if (day.score < 75) colorClass = "bg-[rgba(var(--a1),0.8)]";
-                  else colorClass = "bg-[rgb(var(--a1))] shadow-[0_0_8px_rgba(var(--a1),0.4)]";
+                  if (day.score < 25) level = 1;
+                  else if (day.score < 50) level = 2;
+                  else if (day.score < 75) level = 3;
+                  else level = 4;
                 }
+                const colorClass = getHeatmapColor(level);
                 return <div key={day.dateStr} className={`w-3 h-3 sm:w-4 sm:h-4 rounded ${colorClass} transition-all hover:scale-125 hover:ring-2 hover:ring-[rgb(var(--a1))] cursor-crosshair`} title={`${format(new Date(day.dateStr + "T00:00:00"), 'MMM d, yyyy')}: ${day.hasData ? day.score + '% Productivity' : 'No Data'}`}></div>
               })}
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 text-[10px] sm:text-xs text-[var(--text)] opacity-60 font-medium mt-2">
             <span>Less</span>
-            <div className="w-3 h-3 rounded bg-[var(--panel-border)] opacity-30"></div>
-            <div className="w-3 h-3 rounded bg-[rgba(var(--a1),0.2)]"></div>
-            <div className="w-3 h-3 rounded bg-[rgba(var(--a1),0.5)]"></div>
-            <div className="w-3 h-3 rounded bg-[rgba(var(--a1),0.8)]"></div>
-            <div className="w-3 h-3 rounded bg-[rgb(var(--a1))] shadow-[0_0_5px_rgba(var(--a1),0.5)]"></div>
+            <div className={`w-3 h-3 rounded ${getHeatmapColor(0)}`}></div>
+            <div className={`w-3 h-3 rounded ${getHeatmapColor(1)}`}></div>
+            <div className={`w-3 h-3 rounded ${getHeatmapColor(2)}`}></div>
+            <div className={`w-3 h-3 rounded ${getHeatmapColor(3)}`}></div>
+            <div className={`w-3 h-3 rounded ${getHeatmapColor(4)}`}></div>
             <span>More</span>
           </div>
         </div>
@@ -1620,6 +1636,30 @@ const App: React.FC = () => {
                       {t === 'light' && <Sun className="w-5 h-5 text-[var(--text)] opacity-80" />}
                       {t === 'dark' && <Moon className="w-5 h-5 text-[var(--text)] opacity-80" />}
                       <span className="font-bold tracking-wide text-[var(--text)] capitalize">{t === 'sync' ? 'Sync with App' : `${t} Mode`}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[var(--text)] font-bold text-sm sm:text-base tracking-wide mb-3 mt-4">Heatmap Color Scale</h4>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4">
+                  {[
+                    { id: 'theme', label: 'THEME', colors: ['bg-[rgba(var(--a1),0.4)]', 'bg-[rgba(var(--a1),0.7)]', 'bg-[rgb(var(--a1))]'] },
+                    { id: 'emerald', label: 'EMERALD', colors: ['bg-emerald-500/40', 'bg-emerald-500/70', 'bg-emerald-500'] },
+                    { id: 'amber', label: 'AMBER', colors: ['bg-amber-500/40', 'bg-amber-500/70', 'bg-amber-500'] },
+                    { id: 'rose', label: 'ROSE', colors: ['bg-rose-500/40', 'bg-rose-500/70', 'bg-rose-500'] },
+                    { id: 'blue', label: 'BLUE', colors: ['bg-blue-500/40', 'bg-blue-500/70', 'bg-blue-500'] },
+                    { id: 'purple', label: 'PURPLE', colors: ['bg-purple-500/40', 'bg-purple-500/70', 'bg-purple-500'] },
+                  ].map((scale) => (
+                    <button
+                      key={`heatmap-${scale.id}`}
+                      onClick={() => setHeatmapColorScale(scale.id as any)}
+                      className={`flex flex-col items-center justify-center gap-3 p-3 rounded-xl sm:rounded-2xl border transition-all duration-300 cursor-pointer ${heatmapColorScale === scale.id ? 'bg-[rgba(var(--a1),0.1)] border-[rgb(var(--a1))] shadow-[0_0_15px_rgba(var(--a1),0.2)] scale-[1.02]' : 'bg-[var(--panel-bg)] border-[var(--panel-border)] hover:border-[var(--text)] hover:shadow-lg'}`}
+                    >
+                      <div className="flex gap-1">
+                        {scale.colors.map((c, i) => <div key={i} className={`w-2 h-2 sm:w-3 sm:h-3 rounded-sm ${c}`}></div>)}
+                      </div>
+                      <span className="font-bold text-[10px] tracking-widest text-[var(--text)] uppercase">{scale.label}</span>
                     </button>
                   ))}
                 </div>
