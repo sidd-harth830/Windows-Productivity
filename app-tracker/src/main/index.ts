@@ -416,7 +416,7 @@ async function startTracking(mainWindow: BrowserWindow) {
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1280, height: 850, minWidth: 1000, minHeight: 700,
-    show: false, autoHideMenuBar: true, frame: false, transparent: true,
+    show: false, autoHideMenuBar: true, frame: false, transparent: true, title: 'Zeitra',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false, contextIsolation: true }
   });
@@ -444,7 +444,7 @@ app.whenReady().then(() => {
       const { autoUpdater } = require('electron-updater');
       autoUpdater.checkForUpdatesAndNotify();
       autoUpdater.on('update-downloaded', () => {
-        new Notification({ title: 'ForgePulse Update Ready', body: 'A new version has been downloaded and will install on restart.' }).show();
+        new Notification({ title: 'Zeitra Update Ready', body: 'A new version has been downloaded and will install on restart.' }).show();
         BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update-complete'));
       });
       autoUpdater.on('download-progress', (progressObj: any) => {
