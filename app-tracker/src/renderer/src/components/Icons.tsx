@@ -22,9 +22,6 @@ export const ZeitraLogo = ({ className = "w-8 h-8" }: { className?: string }) =>
       </linearGradient>
 
       {/* Premium Glow/Shadow */}
-      <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
-        <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#A8DF8E" floodOpacity="0.15" />
-      </filter>
       <filter id="pink-glow" x="-20%" y="-20%" width="140%" height="140%">
         <feDropShadow dx="0" dy="2" stdDeviation="6" floodColor="#FFAAB8" floodOpacity="0.2" />
       </filter>
@@ -32,8 +29,8 @@ export const ZeitraLogo = ({ className = "w-8 h-8" }: { className?: string }) =>
 
       {/* 1. BACKGROUND ORBITS (TIME & TRACKING) */}
       <circle cx="120" cy="120" r="100" stroke="#F0FFDF" strokeWidth="3" opacity="0.15" />
-      <path d="M 120 20 A 100 100 0 1 1 20 120" stroke="url(#time-track-grad)" strokeWidth="12" strokeLinecap="round" filter="url(#soft-glow)" className="origin-[120px_120px] animate-[spin_12s_linear_infinite]" />
-      <circle cx="120" cy="120" r="45" stroke="#FFD8DF" strokeWidth="2" strokeDasharray="4 8" opacity="0.6" className="origin-[120px_120px] animate-[spin_20s_linear_infinite_reverse]" />
+      <path d="M 120 20 A 100 100 0 1 1 20 120" stroke="url(#time-track-grad)" strokeWidth="12" strokeLinecap="round" className="origin-[120px_120px] animate-[spin_12s_linear_infinite] will-change-transform" />
+      <circle cx="120" cy="120" r="45" stroke="#FFD8DF" strokeWidth="2" strokeDasharray="4 8" opacity="0.6" className="origin-[120px_120px] animate-[spin_20s_linear_infinite_reverse] will-change-transform" />
 
       {/* 2. FOREGROUND CORE (FOCUS & PRECISION) */}
       <path d="M 75 75 A 60 60 0 0 1 75 165" stroke="#FFD8DF" strokeWidth="14" strokeLinecap="round" />
