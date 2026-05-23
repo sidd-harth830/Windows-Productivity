@@ -1821,8 +1821,13 @@ const App: React.FC = () => {
 
       {/* Mini Player Internal Overlay */}
       {isMiniPlayer && (
-        <div className="absolute inset-0 z-[200] bg-[var(--bg)]/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-          <div className="w-[320px] h-[240px] flex flex-col justify-between bg-[var(--panel-bg)]/80 backdrop-blur-[24px] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_20px_60px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-5 group transition-all duration-300">
+        <div className="absolute inset-0 z-[200] bg-[var(--bg)]/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-500 overflow-hidden">
+          
+          {/* Animated Zen Backdrop */}
+          <div className="absolute top-[0%] left-[10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-[rgb(var(--a1))] rounded-full mix-blend-screen filter blur-[120px] opacity-[0.2] pointer-events-none" style={{ animation: 'zenDrift1 20s ease-in-out infinite' }}></div>
+          <div className="absolute bottom-[0%] right-[10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[120px] opacity-[0.2] pointer-events-none" style={{ animation: 'zenDrift2 25s ease-in-out infinite' }}></div>
+
+          <div className="w-[320px] h-[240px] flex flex-col justify-between bg-[var(--panel-bg)]/80 backdrop-blur-[32px] text-[var(--text)] relative border border-[var(--panel-border)] shadow-[0_30px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)] rounded-[1.5rem] p-5 group transition-all duration-500 z-10 hover:scale-[1.02] animate-in zoom-in-95 duration-500">
             
             <div className="flex items-center justify-between w-full z-50">
               <button 
@@ -1972,6 +1977,20 @@ const App: React.FC = () => {
         .recharts-brush-traveller line {
           stroke: var(--bg) !important;
           stroke-width: 1.5px !important;
+        }
+        
+        /* Zen Backdrop Animations */
+        @keyframes zenDrift1 {
+          0% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(5vw, -5vh) scale(1.1); }
+          66% { transform: translate(-3vw, 3vh) scale(0.95); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes zenDrift2 {
+          0% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(-5vw, 5vh) scale(0.95); }
+          66% { transform: translate(3vw, -3vh) scale(1.1); }
+          100% { transform: translate(0, 0) scale(1); }
         }
       `}</style>
 
