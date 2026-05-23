@@ -1,7 +1,7 @@
-appId: com.electron.app
-productName: app-tracker
+appId: com.zeitra.app
+productName: Zeitra
 directories:
-  buildResources: build
+  buildResources: resources
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -12,12 +12,21 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: app-tracker
+  target:
+    - nsis
+    - portable
+  icon: resources/icon.ico
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: resources/icon.ico
+  installerHeader: resources/installerHeader.bmp
+  installerSidebar: resources/installerSidebar.bmp
+  uninstallerSidebar: resources/uninstallerSidebar.bmp
+  createDesktopShortcut: true
+  runAfterFinish: true
+portable:
+  artifactName: ${productName}-Portable-${version}.${ext}
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
@@ -39,7 +48,8 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: sidd-harth830
+  repo: Windows-Productivity
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
