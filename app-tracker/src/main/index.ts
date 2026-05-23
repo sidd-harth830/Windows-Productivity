@@ -5,7 +5,6 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import * as db from './database' // Fully integrated SQLite database!
 
-let trackingInterval: NodeJS.Timeout | null = null;
 let lastApp: string | null = null;
 let lastCheckTime: number = Date.now();
 let lastUiUpdate: number = 0; // 0 forces instant boot update
@@ -409,7 +408,7 @@ async function startTracking(mainWindow: BrowserWindow) {
     };
 
     await track(); 
-    trackingInterval = setInterval(track, 2000);
+    setInterval(track, 2000);
   } catch (error) {}
 }
 

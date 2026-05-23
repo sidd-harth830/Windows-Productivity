@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+declare global {
+  interface Window {
+    electron: typeof electronAPI;
+    api: typeof api;
+  }
+}
+
 const api = {
   onWindowUpdate: (callback: (data: any) => void) => ipcRenderer.on('window-update', (_event, data) => callback(data)),
   getInitialData: () => ipcRenderer.invoke('get-initial-data'),

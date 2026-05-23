@@ -136,6 +136,5 @@ export const getAppPath = (appName: string): string | null => {
 // --- Cleanup ---
 // Force a synchronous save when the app quits
 app.on('before-quit', () => {
-  if (saveTimeout) clearTimeout(saveTimeout);
   saveDatabase(); 
 });
