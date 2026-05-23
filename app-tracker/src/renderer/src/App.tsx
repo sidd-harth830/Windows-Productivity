@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie, Brush } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, CartesianGrid, PieChart, Pie, Brush, Sector } from 'recharts'
 import Controls from './components/Controls'
 import ContextMenu from './components/ContextMenu'
 import NoData from './components/NoData'
@@ -45,6 +45,7 @@ const App: React.FC = () => {
   const [categoryModalApp, setCategoryModalApp] = useState<string | null>(null);
   const [categoryInputValue, setCategoryInputValue] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   
   const [logoClicks, setLogoClicks] = useState<number>(0);
   const [showConfetti, setShowConfetti] = useState<boolean>(false);
@@ -1419,12 +1420,37 @@ const App: React.FC = () => {
                     <div className="absolute inset-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none">
+                          <Pie 
+                            data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value" stroke="none"
+                            activeIndex={hoveredCategory ? pieData.findIndex(d => d.name === hoveredCategory) : undefined}
+                            activeShape={(props: any) => {
+                              const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                              return (
+                                <g>
+                                  <Sector
+                                    cx={cx}
+                                    cy={cy}
+                                    innerRadius={innerRadius}
+                                    outerRadius={outerRadius + 6}
+                                    startAngle={startAngle}
+                                    endAngle={endAngle}
+                                    fill={fill}
+                                    stroke="var(--bg)"
+                                    strokeWidth={3}
+                                    cursor="pointer"
+                                    className="drop-shadow-md transition-all duration-300"
+                                  />
+                                </g>
+                              );
+                            }}
+                          >
                             {pieData.map((entry, index) => (
                               <Cell 
                                 key={`cell-${index}`} 
                                 fill={PIE_COLORS[index % PIE_COLORS.length]} 
                                 onClick={() => setSelectedCategory(prev => prev === entry.name ? null : entry.name)}
+                                onMouseEnter={() => setHoveredCategory(entry.name)}
+                                onMouseLeave={() => setHoveredCategory(null)}
                                 className="cursor-pointer outline-none transition-opacity duration-300 hover:opacity-80"
                                 style={{ opacity: selectedCategory ? (selectedCategory === entry.name ? 1 : 0.3) : 1 }}
                               />
@@ -1473,8 +1499,10 @@ const App: React.FC = () => {
                     {pieData.map((entry, index) => (
                       <div 
                         key={entry.name} 
-                        className={`flex items-center gap-1.5 cursor-pointer transition-opacity ${selectedCategory && selectedCategory !== entry.name ? 'opacity-40' : 'opacity-100 hover:opacity-80'}`}
+                        className={`flex items-center gap-1.5 cursor-pointer transition-all duration-300 ${selectedCategory && selectedCategory !== entry.name ? 'opacity-40' : 'opacity-100 hover:opacity-80'} ${hoveredCategory === entry.name ? 'scale-110 drop-shadow-md' : 'scale-100'}`}
                         onClick={() => setSelectedCategory(prev => prev === entry.name ? null : entry.name)}
+                        onMouseEnter={() => setHoveredCategory(entry.name)}
+                        onMouseLeave={() => setHoveredCategory(null)}
                       >
                         <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></div>
                         <span className="text-[var(--text)] text-xs font-bold opacity-70">{entry.name}</span>
