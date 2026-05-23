@@ -907,7 +907,7 @@ const App: React.FC = () => {
 
     return (
       <div ref={dashboardRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
-        <div className="stagger-item mb-2 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4" style={{ animationDelay: '0.05s' }}>
+        <div className="stagger-item mb-2 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-3 sm:gap-4" style={{ animationDelay: '0.05s' }}>
           <div>
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
               Productivity Dashboard
@@ -978,10 +978,10 @@ const App: React.FC = () => {
 
         <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
           <div className="lg:col-span-8 bg-[var(--panel-bg)] backdrop-blur-3xl border border-[var(--panel-border)] p-5 sm:p-6 lg:p-8 rounded-2xl lg:rounded-3xl flex flex-col shadow-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] min-h-[350px] sm:min-h-[400px]">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-8 gap-4">
-              <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide">All App Footprints</h2>
-              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto print:hidden">
-                <div className="relative w-full md:w-64">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 sm:mb-8 gap-4">
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--text)] tracking-wide shrink-0">All App Footprints</h2>
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto print:hidden">
+                <div className="relative w-full sm:w-64 shrink-0">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                   </div>
@@ -994,7 +994,7 @@ const App: React.FC = () => {
                   />
                 </div>
                 <Select value={sortMode} onValueChange={(val) => setSortMode(val as 'duration' | 'alphabetical')}>
-                  <SelectTrigger className="w-full sm:w-[180px] bg-[var(--panel-bg)] border-[var(--panel-border)] rounded-xl px-4 py-5 text-sm text-[var(--text)] font-medium focus:ring-1 focus:ring-[rgb(var(--a1))] focus:border-[rgb(var(--a1))] transition-all shadow-inner outline-none">
+                  <SelectTrigger className="w-full sm:w-[180px] shrink-0 bg-[var(--panel-bg)] border-[var(--panel-border)] rounded-xl px-4 py-5 text-sm text-[var(--text)] font-medium focus:ring-1 focus:ring-[rgb(var(--a1))] focus:border-[rgb(var(--a1))] transition-all shadow-inner outline-none">
                     <SelectValue placeholder="Sort apps" />
                   </SelectTrigger>
                   <SelectContent className="bg-[var(--panel-bg)] border-[var(--panel-border)] text-[var(--text)] backdrop-blur-3xl rounded-xl">
@@ -1226,15 +1226,15 @@ const App: React.FC = () => {
 
     return (
       <div ref={analyticsRef} className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
-        <div className="stagger-item flex flex-col md:flex-row justify-between items-start md:items-end gap-3 sm:gap-4 mb-2" style={{ animationDelay: '0.05s' }}>
+        <div className="stagger-item flex flex-col lg:flex-row justify-between items-start lg:items-end gap-3 sm:gap-4 mb-2" style={{ animationDelay: '0.05s' }}>
           <div>
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
               Usage Analytics
             </h1>
             <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Deep dive into your focus trends.</p>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
-            <span className="text-[var(--text)] opacity-60 text-sm font-bold">Date Range:</span>
+          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+            <span className="text-[var(--text)] opacity-60 text-sm font-bold shrink-0">Date Range:</span>
             <div className="flex items-center gap-1 sm:gap-2 bg-[var(--panel-bg)] border border-[var(--panel-border)] rounded-xl px-2 sm:px-3 py-1.5 shadow-inner w-full sm:w-auto overflow-x-auto custom-scrollbar">
               <Select value={datePreset} onValueChange={handlePresetChange}>
                 <SelectTrigger className="bg-transparent border-none text-[rgb(var(--a1))] text-sm font-bold shadow-none focus:ring-0 p-0 h-auto gap-1">
@@ -1283,7 +1283,7 @@ const App: React.FC = () => {
                           }
                         }}
                         initialFocus
-                        numberOfMonths={2}
+                        numberOfMonths={window.innerWidth < 768 ? 1 : 2}
                       />
                       <div className="p-3 border-t border-[var(--panel-border)]">
                         <button
@@ -1421,9 +1421,9 @@ const App: React.FC = () => {
 
         <div className="stagger-item grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 shrink-0" style={{ animationDelay: '0.25s' }}>
           <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 ml-2">
-              <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide">Top Applications</h3>
-              <div className="relative w-full sm:w-64 print:hidden">
+            <div className="flex flex-col sm:flex-row flex-wrap sm:items-center justify-between gap-3 ml-2">
+              <h3 className="text-base sm:text-lg font-bold text-[var(--text)] tracking-wide shrink-0">Top Applications</h3>
+              <div className="relative w-full sm:w-64 print:hidden shrink-0">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="w-4 h-4 text-[var(--text)] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
@@ -1665,7 +1665,7 @@ const App: React.FC = () => {
                         }
                       }}
                       initialFocus
-                      numberOfMonths={2}
+                      numberOfMonths={window.innerWidth < 768 ? 1 : 2}
                     />
                     <div className="p-3 border-t border-[var(--panel-border)]">
                       <button

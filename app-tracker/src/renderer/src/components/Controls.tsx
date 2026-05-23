@@ -187,7 +187,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
         <div className="flex flex-col min-h-full gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto w-full pb-10">
             <div className="stagger-item shrink-0 mb-2 sm:mb-4" style={{ animationDelay: '0.05s' }}>
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black mb-2 sm:mb-4 tracking-tighter bg-gradient-to-br from-[rgb(var(--a1))] via-[var(--text)] to-[rgb(var(--a2))] text-transparent bg-clip-text drop-shadow-[0_2px_15px_rgba(var(--a1),0.4)] font-['Acorn',_sans-serif]">
-                    Zaitra Controls
+                    Zeitra Controls
                 </h1>
                 <p className="text-[var(--text)] opacity-70 text-sm sm:text-lg font-medium tracking-wide">Manage your Windows configuration and focus limits.</p>
             </div>
@@ -227,7 +227,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 <CircularDial value={offlineMinutes} min={5} max={180} step={5} onChange={setOfflineMinutes} />
                                 <span className="text-[9px] uppercase tracking-widest font-black opacity-40 mt-2">Minutes</span>
                             </div>
-                            <div className="flex flex-col w-full gap-3">
+                            <div className="flex flex-col w-full gap-3 min-w-0">
                                 <Input
                                     type="text" value={offlineActivity} onChange={(e) => setOfflineActivity(e.target.value)}
                                     placeholder="Activity (e.g., Reading Book)"
@@ -239,9 +239,9 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </div>
                         </form>
                         
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="flex flex-wrap gap-2 mt-3">
                             {['Reading', 'Meeting', 'Workout', 'Studying', 'Brainstorming'].map(preset => (
-                                <button key={preset} type="button" onClick={() => { setOfflineActivity(preset); setOfflineMinutes(30); }} className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-xs font-bold transition-all shadow-inner cursor-pointer">
+                                <button key={preset} type="button" onClick={() => { setOfflineActivity(preset); setOfflineMinutes(30); }} className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-xs font-bold transition-all shadow-inner cursor-pointer whitespace-nowrap shrink-0">
                                     + {preset}
                                 </button>
                             ))}
@@ -282,8 +282,8 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="flex gap-3 relative z-30">
-                            <div className="relative flex-grow flex flex-col sm:flex-row gap-2 sm:gap-3">
+                        <form onSubmit={handleSubmit} className="flex flex-col xl:flex-row gap-3 relative z-30">
+                            <div className="relative flex-grow flex flex-col sm:flex-row gap-2 sm:gap-3 min-w-0">
                                 <div className="relative flex-grow">
                                     <Input
                                         type="text"
@@ -323,7 +323,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                             </div>
 
                             {ruleType === 'timer' && (
-                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1 min-w-[140px]">
+                                <div className="flex items-center justify-between bg-[var(--bg)] border-2 border-[var(--panel-border)] focus-within:border-[rgb(var(--a1))] focus-within:shadow-[0_0_15px_rgba(var(--a1),0.15)] transition-all rounded-xl px-2 py-1 min-w-[140px] shrink-0">
                                     <button type="button" onClick={() => setTimeLimitMinutes(Math.max(1, timeLimitMinutes - 15))} className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[rgba(var(--a1),0.15)] text-[var(--text)] font-bold transition-colors">
                                         -
                                     </button>
@@ -337,7 +337,7 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                                 </div>
                             )}
 
-                            <button type="submit" className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 h-[56px] rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)]">
+                            <button type="submit" className="bg-[rgb(var(--a1))] hover:brightness-125 text-[var(--bg)] px-6 h-[56px] rounded-xl text-sm font-black tracking-widest transition-all cursor-pointer shadow-[0_0_20px_rgba(var(--a1),0.4)] shrink-0">
                                 ADD RULE
                             </button>
                         </form>
@@ -345,12 +345,12 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                     </div>
                     
                     <div className="flex flex-wrap gap-2 mt-2 mb-2 items-center z-10">
-                        <span className="text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest mr-1">Quick Target:</span>
+                        <span className="text-[10px] sm:text-xs font-black text-[var(--text)] opacity-40 uppercase tracking-widest mr-1 shrink-0">Quick Target:</span>
                         {['YouTube', 'Discord', 'Netflix', 'Twitter', 'Steam', 'TikTok', 'Instagram'].map(app => (
                             <button
                                 key={app} type="button"
                                 onClick={() => handleQuickAdd(app)}
-                                className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-[10px] sm:text-xs font-bold transition-all shadow-inner cursor-pointer"
+                                className="px-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] text-[var(--text)] opacity-70 hover:opacity-100 hover:border-[rgb(var(--a1))] hover:text-[rgb(var(--a1))] rounded-lg text-[10px] sm:text-xs font-bold transition-all shadow-inner cursor-pointer whitespace-nowrap shrink-0"
                             >
                                 + {app}
                             </button>
@@ -358,19 +358,19 @@ const Controls: React.FC<ControlsProps> = ({ isFocusMode, setIsFocusMode, blockL
                     </div>
 
                     <div className="mt-8 flex flex-col flex-1 min-h-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 sm:px-2 mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
+                        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 px-1 sm:px-2 mb-3">
+                            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                                <div className="relative shrink-0">
                                     <FilterIcon className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text)] opacity-50" />
-                                    <select value={ruleFilter} onChange={(e) => setRuleFilter(e.target.value as any)} className="pl-8 pr-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] rounded-lg text-xs font-bold text-[var(--text)] opacity-70 hover:opacity-100 outline-none focus:border-[rgb(var(--a1))] transition-colors appearance-none cursor-pointer">
+                                    <select value={ruleFilter} onChange={(e) => setRuleFilter(e.target.value as any)} className="w-full sm:w-auto pl-8 pr-3 py-1.5 bg-[var(--bg)] border border-[var(--panel-border)] rounded-lg text-xs font-bold text-[var(--text)] opacity-70 hover:opacity-100 outline-none focus:border-[rgb(var(--a1))] transition-colors appearance-none cursor-pointer">
                                         <option value="all">All Rules</option>
                                         <option value="block">Hard Blocks Only</option>
                                         <option value="timer">Time Limits Only</option>
                                     </select>
                                 </div>
-                                <Input type="text" value={ruleSearchQuery} onChange={(e) => setRuleSearchQuery(e.target.value)} placeholder="Filter rules..." className="h-8 text-xs w-32 sm:w-40 rounded-lg px-3" />
+                                <Input type="text" value={ruleSearchQuery} onChange={(e) => setRuleSearchQuery(e.target.value)} placeholder="Filter rules..." className="h-8 text-xs w-full sm:w-40 rounded-lg px-3 shrink-0" />
                             </div>
-                            <button type="button" onClick={handleClearAllRules} disabled={Object.keys(blockList).length === 0} className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black text-red-400 hover:text-red-500 hover:bg-red-500/10 px-2 py-1 rounded transition-colors uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
+                            <button type="button" onClick={handleClearAllRules} disabled={Object.keys(blockList).length === 0} className="shrink-0 w-full sm:w-auto flex items-center justify-center gap-1.5 text-[10px] sm:text-xs font-black text-red-400 hover:text-red-500 hover:bg-red-500/10 px-2 py-2 sm:py-1 rounded transition-colors uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">
                                 <TrashIcon className="w-3.5 h-3.5" /> Clear All
                             </button>
                         </div>
