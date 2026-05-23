@@ -44,6 +44,10 @@ const App: React.FC = () => {
   const [showLevelUp, setShowLevelUp] = useState<{rank: string, title: string} | null>(null);
   const [categoryModalApp, setCategoryModalApp] = useState<string | null>(null);
   const [categoryInputValue, setCategoryInputValue] = useState<string>('');
+  
+  const [logoClicks, setLogoClicks] = useState<number>(0);
+  const [showConfetti, setShowConfetti] = useState<boolean>(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const dashboardRef = useRef<HTMLDivElement>(null);
   const analyticsRef = useRef<HTMLDivElement>(null);
@@ -186,6 +190,20 @@ const App: React.FC = () => {
       setCategoryInputValue(categorizeApp(contextMenu.appName));
     }
     setContextMenu(null);
+  };
+
+  const handleLogoClick = () => {
+    setLogoClicks(prev => prev + 1);
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+    clickTimeoutRef.current = setTimeout(() => setLogoClicks(0), 1000); // Resets combo after 1s
+
+    if (logoClicks + 1 >= 5) {
+      setShowConfetti(true);
+      setLogoClicks(0);
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+      showToast('Easter Egg Found!', 'Time to celebrate your focus!');
+      setTimeout(() => setShowConfetti(false), 5000);
+    }
   };
 
   const handleHideApp = () => {
@@ -1732,7 +1750,7 @@ const App: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500 z-0"></div>
 
         <div className="h-10 w-full flex items-center justify-between px-4 shrink-0 bg-[var(--bg)]/50 backdrop-blur-md border-b border-[var(--panel-border)] [-webkit-app-region:drag] z-50">
-          <div className="flex items-center gap-2 text-[var(--text)] opacity-60">
+          <div className="flex items-center gap-2 text-[var(--text)] opacity-60 hover:opacity-100 transition-opacity cursor-pointer [-webkit-app-region:no-drag]" onClick={handleLogoClick}>
             <ZeitraLogo className="w-4 h-4 drop-shadow-[0_0_5px_rgba(var(--a1),0.4)]" />
             <span className="text-xs font-black tracking-widest uppercase">Zeitra</span>
           </div>
@@ -1808,7 +1826,7 @@ const App: React.FC = () => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-[rgb(var(--a2))] rounded-full mix-blend-screen filter blur-[200px] opacity-[0.12] pointer-events-none transition-colors duration-500 z-0"></div>
 
       <div className="h-10 w-full flex items-center justify-between px-4 shrink-0 bg-[var(--bg)]/50 backdrop-blur-md border-b border-[var(--panel-border)] [-webkit-app-region:drag] z-50">
-        <div className="flex items-center gap-2 text-[var(--text)] opacity-60">
+        <div className="flex items-center gap-2 text-[var(--text)] opacity-60 hover:opacity-100 transition-opacity cursor-pointer [-webkit-app-region:no-drag]" onClick={handleLogoClick}>
           <ZeitraLogo className="w-4 h-4 drop-shadow-[0_0_5px_rgba(var(--a1),0.4)]" />
           <span className="text-xs font-black tracking-widest uppercase">Zeitra</span>
         </div>
@@ -1838,7 +1856,9 @@ const App: React.FC = () => {
         <div className="w-20 md:w-64 lg:w-72 shrink-0 bg-[var(--panel-bg)] border-r border-[var(--panel-border)] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative z-10 backdrop-blur-3xl shadow-[20px_0_40px_rgba(0,0,0,0.1)] print:hidden transition-all duration-300">
           <div className="flex flex-col gap-8 md:gap-10">
             <div className="px-0 md:px-2 flex justify-center md:justify-start stagger-item" style={{ animationDelay: '0.0s' }}>
-              <ZeitraLogo className="w-10 md:w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)] transition-all duration-300" />
+              <button onClick={handleLogoClick} className="cursor-pointer focus:outline-none hover:scale-105 transition-transform duration-300 rounded-2xl [-webkit-app-region:no-drag]">
+                <ZeitraLogo className="w-10 md:w-28 h-auto drop-shadow-[0_0_8px_rgba(var(--a1),0.5)] transition-all duration-300" />
+              </button>
             </div>
 
           <nav className="flex flex-col gap-2 md:gap-3">
@@ -2071,6 +2091,25 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Confetti Easter Egg Overlay */}
+      {showConfetti && (
+        <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
+          {[...Array(75)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-3 h-3 rounded-sm opacity-90"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `-10%`,
+                backgroundColor: ['#A8DF8E', '#FFAAB8', '#F0FFDF', '#38bdf8', '#fbbf24'][Math.floor(Math.random() * 5)],
+                animation: `confettiFall ${1.5 + Math.random() * 2.5}s ease-in forwards`,
+                animationDelay: `${Math.random() * 0.5}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <style>{`
         .stagger-item {
@@ -2135,6 +2174,10 @@ const App: React.FC = () => {
           33% { transform: translate(-5vw, 5vh) scale(0.95); }
           66% { transform: translate(3vw, -3vh) scale(1.1); }
           100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes confettiFall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
         }
       `}</style>
 

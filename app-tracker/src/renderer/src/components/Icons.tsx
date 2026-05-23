@@ -32,8 +32,8 @@ export const ZeitraLogo = ({ className = "w-8 h-8" }: { className?: string }) =>
 
       {/* 1. BACKGROUND ORBITS (TIME & TRACKING) */}
       <circle cx="120" cy="120" r="100" stroke="#F0FFDF" strokeWidth="3" opacity="0.15" />
-      <path d="M 120 20 A 100 100 0 1 1 20 120" stroke="url(#time-track-grad)" strokeWidth="12" strokeLinecap="round" filter="url(#soft-glow)" />
-      <circle cx="120" cy="120" r="45" stroke="#FFD8DF" strokeWidth="2" strokeDasharray="4 8" opacity="0.6" />
+      <path d="M 120 20 A 100 100 0 1 1 20 120" stroke="url(#time-track-grad)" strokeWidth="12" strokeLinecap="round" filter="url(#soft-glow)" className="origin-[120px_120px] animate-[spin_12s_linear_infinite]" />
+      <circle cx="120" cy="120" r="45" stroke="#FFD8DF" strokeWidth="2" strokeDasharray="4 8" opacity="0.6" className="origin-[120px_120px] animate-[spin_20s_linear_infinite_reverse]" />
 
       {/* 2. FOREGROUND CORE (FOCUS & PRECISION) */}
       <path d="M 75 75 A 60 60 0 0 1 75 165" stroke="#FFD8DF" strokeWidth="14" strokeLinecap="round" />
