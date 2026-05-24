@@ -279,6 +279,11 @@ ipcMain.handle('check-for-updates', async () => {
   return false; // Updates don't run in development mode
 });
 
+ipcMain.on('quit-and-install', () => {
+  const { autoUpdater } = require('electron-updater');
+  autoUpdater.quitAndInstall();
+});
+
 // --- 3. Utilities ---
 function cleanAppName(rawName: string): string {
   let clean = rawName.replace(/\.exe$/i, '').trim();

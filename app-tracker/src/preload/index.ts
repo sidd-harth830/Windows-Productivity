@@ -66,6 +66,7 @@ const api = {
 
   // NEW: Check for Updates
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  quitAndInstall: () => ipcRenderer.send('quit-and-install'),
   onUpdateProgress: (callback: (percent: number) => void) => ipcRenderer.on('update-progress', (_event, percent) => callback(percent)),
   onUpdateComplete: (callback: () => void) => ipcRenderer.on('update-complete', () => callback())
 }

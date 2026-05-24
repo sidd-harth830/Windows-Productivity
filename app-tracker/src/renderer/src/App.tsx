@@ -401,7 +401,9 @@ const App: React.FC = () => {
 
   const handleCheckForUpdates = async () => {
     if (updateReady) {
-      showToast('Restart Required', 'Please close and restart the application to apply the update.');
+      if (window.api && (window.api as any).quitAndInstall) {
+        (window.api as any).quitAndInstall();
+      }
       return;
     }
 

@@ -17,8 +17,8 @@ win:
     - portable
   icon: resources/icon.ico
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+  oneClick: true
+  perMachine: false
   installerIcon: resources/icon.ico
   installerHeader: resources/installerHeader.bmp
   installerSidebar: resources/installerSidebar.bmp
@@ -46,7 +46,7 @@ linux:
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}
-npmRebuild: false
+npmRebuild: true
 publish:
   provider: github
   owner: sidd-harth830
